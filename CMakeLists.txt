@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 project(ytorrent)
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} 
+    main.cpp
+    src/torrent/TorrentMeta.cpp
+    )
 
 
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -11,3 +14,5 @@ target_link_libraries(${PROJECT_NAME}
     "/home/yavor/ytorrent/dependencies/cpp-bencoding/install/lib/libbencoding.a")
 
 target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/dependencies/cpp-bencoding/install/include")
+target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/src/torrent")
+
