@@ -1,4 +1,4 @@
 .vscode/
 dependencies/
-out
-
+build/
+*.torrent
