@@ -1,6 +1,8 @@
 #include "TorrentMeta.h"
 #include <iostream> // REMOVE
 #include <typeinfo>
+#include <boost/uuid/detail/sha1.hpp>
+
 using namespace bencoding;
 
 void TorrentMeta::parseFile(std::string filename)
@@ -8,17 +10,25 @@ void TorrentMeta::parseFile(std::string filename)
 
     std::shared_ptr<BItem> decodedData;
     std::ifstream input(filename);
-    decodedData = decode(input);
-    auto data = decodedData->as<BDictionary>();
+    decodedData = bencoding::decode(input);
+    std::shared_ptr<BDictionary> torrMetaDict = decodedData->as<BDictionary>();
 
     // extract announce
-    std::shared_ptr<BItem> &annVal = (*data)[BString::create("announce")];
+    std::shared_ptr<BItem> &annVal = (*torrMetaDict)[BString::create("announce")]; //
     std::shared_ptr<BString> bStrAnn = annVal->as<BString>();
     this->announce = bStrAnn->value();
 
-    std::shared_ptr<BItem> &infoVal = (*data)[BString::create("info")];
+    std::shared_ptr<BItem> &infoVal = (*torrMetaDict)[BString::create("info")];
     std::shared_ptr<BDictionary> infoDict = infoVal->as<BDictionary>();
 
+    // infoHash
+    std::string strInfoHash = bencoding::encode(infoDict);
+
+    boost::uuids::detail::sha1 sha1;
+    sha1.process_bytes(strInfoHash.data(), strInfoHash.size());
+    sha1.get_digest(this->infoHash);
+
+    // files
     std::shared_ptr<BItem> &files = (*infoDict)[BString::create("files")];
     if (files != nullptr)
     {
@@ -37,14 +47,14 @@ void TorrentMeta::parseFile(std::string filename)
             std::shared_ptr<BList> bFilePath = ((*bFile)[BString::create("path")])->as<BList>();
             for (BList::iterator it = bFilePath->begin(); it != bFilePath->end(); ++it)
             {
-                it++;
-                if (it == bFilePath->end())
+                // it++;
+                if (std::next(it) == bFilePath->end())
                 {
-                    it--;
+                    // it--;
                     tf.name = it->get()->as<BString>()->value();
                     break;
                 }
-                it--;
+                // it--;
 
                 std::string currDir = it->get()->as<BString>()->value();
                 tf.path += "/" + currDir;
@@ -60,18 +70,8 @@ void TorrentMeta::parseFile(std::string filename)
         this->files.push_back(tf);
     }
 
-    // sha1sums
-
-    // TorrentFile f;
-    // std::shared_ptr<bencoding::BItem> bItemLen = (*infoDict)[bencoding::BString::create("length")];
-    // std::shared_ptr<bencoding::BInteger> bIntLen = bItemLen->as<bencoding::BInteger>();
-
-    // std::shared_ptr<bencoding::BItem> bItemName = (*infoDict)[bencoding::BString::create("name")];
-    // std::shared_ptr<bencoding::BString> bStrName = bItemName->as<bencoding::BString>();
-
-    // f.length = bIntLen->value();
-    // f.name = bStrName->value();
-    // files.push_back(f);
+    // sha1Sums: to be improved
+    this->sha1Sums = ((*infoDict)[BString::create("pieces")])->as<BString>()->value();
 }
 
 std::string TorrentMeta::getAnnounce() const
@@ -81,7 +81,17 @@ std::string TorrentMeta::getAnnounce() const
 
 void TorrentMeta::printAll() const
 {
+    std::ios_base::fmtflags f(std::cout.flags()); // used to reset the cout flags after std::hex is used
     std::cout << "Announce: " << announce << std::endl;
+    
+    std::cout << "Info hash: ";
+    for (int i = 0; i < 5; i++)
+    {
+        std::cout << std::hex << (this->infoHash)[i];
+    }
+    std::cout << std::endl;
+    std::cout.flags(f);
+
     std::cout << "Files: " << files.size() << std::endl;
     std::cout << "Base directory: " << baseDir << std::endl;
     for (auto &file : files)

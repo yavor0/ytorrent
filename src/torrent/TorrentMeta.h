@@ -1,9 +1,10 @@
-#ifndef __TORRENT_H
-#define __TORRENT_H
+#ifndef __TORRENT_META_H
+#define __TORRENT_META_H
 #include <string>
 #include <fstream>
 #include <vector>
 #include "bencoding/bencoding.h"
+
 
 struct TorrentFile{
     std::string name;
@@ -16,10 +17,11 @@ struct TorrentFile{
 class TorrentMeta
 {
 private:
+    std::uint32_t infoHash[5] = {0};
     std::string announce;
     std::string baseDir;
     std::vector<TorrentFile> files;
-
+    std::string sha1Sums;
 public:
     TorrentMeta() = default;
     void parseFile(std::string filename);
