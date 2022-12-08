@@ -5,7 +5,7 @@ add_executable(${PROJECT_NAME}
     src/torrent/TorrentMeta.cpp
     )
 
-
+set(CMAKE_BUILD_TYPE Debug)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/dependencies/boost_1_80_0")
@@ -15,4 +15,3 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/dependencies/cpp-bencoding/install/include")
 target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/src/torrent")
-
