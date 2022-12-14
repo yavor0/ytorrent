@@ -5,14 +5,12 @@
 #include <vector>
 #include "bencoding/bencoding.h"
 
-
-struct TorrentFile{
+struct TorrentFile
+{
     std::string name;
     std::string path;
     size_t length;
 };
-
-
 
 class TorrentMeta
 {
@@ -22,6 +20,7 @@ private:
     std::string baseDir;
     std::vector<TorrentFile> files;
     std::string sha1Sums;
+
 public:
     TorrentMeta() = default;
     void parseFile(std::string filename);
