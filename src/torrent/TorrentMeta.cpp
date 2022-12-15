@@ -60,6 +60,7 @@ void TorrentMeta::parseFile(std::string filename)
                 tf.path += "/" + currDir;
             }
             this->files.push_back(tf);
+            this->lengthSum += tf.length;
         }
     }
     else
@@ -68,6 +69,7 @@ void TorrentMeta::parseFile(std::string filename)
         tf.name = ((*infoDict)[BString::create("name")])->as<BString>()->value();
         tf.length = ((*infoDict)[BString::create("length")])->as<BInteger>()->value();
         this->files.push_back(tf);
+        this->lengthSum += tf.length;
     }
 
     // sha1Sums: to be improved
@@ -91,7 +93,7 @@ void TorrentMeta::printAll() const
     }
     std::cout << std::endl;
     std::cout.flags(f);
-
+    std::cout << "Length: " << this->lengthSum << std::endl;
     std::cout << "Files: " << files.size() << std::endl;
     std::cout << "Base directory: " << baseDir << std::endl;
     for (auto &file : files)
