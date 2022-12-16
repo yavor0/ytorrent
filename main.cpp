@@ -3,17 +3,24 @@
 #include <memory>
 #include <string>
 
-#include "TorrentMeta.h"
+#include "TorrentMeta.hpp"
+#include "Tracker.hpp"
 // #include "bencoding/bencoding.h"
 
 using namespace std;
 using namespace bencoding;
 
 int main(int argc, char **argv) {
-	TorrentMeta t;
+	TorrentMeta tm;
 	string filename(argv[1]);
-	t.parseFile(filename);
-	t.printAll();
+	tm.parseFile(filename);
+	tm.printAll();
+
+
+
+	// Tracker tr(tm.get_announce());
+	// std::cout << tr.get_url();
+	// tr.query();
 
 	return 0;
 }

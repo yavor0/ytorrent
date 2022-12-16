@@ -1,5 +1,5 @@
-#ifndef __TORRENT_TRACKER_H
-#define __TORRENT_TRACKER_H
+#ifndef TORRENT_TRACKER_H
+#define TORRENT_TRACKER_H
 #include <string>
 #include <boost/asio.hpp>
 

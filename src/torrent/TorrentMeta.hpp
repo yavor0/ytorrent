@@ -1,5 +1,5 @@
-#ifndef __TORRENT_META_H
-#define __TORRENT_META_H
+#ifndef TORRENT_META_H
+#define TORRENT_META_H
 #include <string>
 #include <fstream>
 #include <vector>
