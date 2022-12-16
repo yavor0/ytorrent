@@ -25,8 +25,12 @@ private:
 public:
     TorrentMeta() = default;
     void parseFile(std::string filename);
-    std::string getAnnounce() const;
+
     void printAll() const;
+    inline std::string get_announce() const { return this->announce; }
+    inline std::string get_baseDir() const { return this->baseDir; }
+    inline size_t get_lengthSum() const { return this->lengthSum; }
+
 };
 
 #endif
