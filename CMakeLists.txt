@@ -3,6 +3,7 @@ project(ytorrent)
 add_executable(${PROJECT_NAME} 
     main.cpp
     src/torrent/TorrentMeta.cpp
+    src/torrent/Tracker.cpp
     )
 
 set(CMAKE_BUILD_TYPE Debug)
