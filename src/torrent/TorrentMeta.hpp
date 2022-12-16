@@ -20,6 +20,7 @@ private:
     std::string baseDir;
     std::vector<TorrentFile> files;
     std::string sha1Sums;
+    size_t lengthSum;
 
 public:
     TorrentMeta() = default;
