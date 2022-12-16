@@ -1,4 +1,4 @@
-#include "TorrentMeta.h"
+#include "TorrentMeta.hpp"
 #include <iostream> // REMOVE
 #include <typeinfo>
 #include <boost/uuid/detail/sha1.hpp>
@@ -16,7 +16,8 @@ void TorrentMeta::parseFile(std::string filename)
     // extract announce
     std::shared_ptr<BItem> &annVal = (*torrMetaDict)[BString::create("announce")]; //
     std::shared_ptr<BString> bStrAnn = annVal->as<BString>();
-    this->announce = bStrAnn->value();
+    std::string unparsedAnnounce = bStrAnn->value();
+    this->announce = unparsedAnnounce.substr(0, unparsedAnnounce.find("/ann")); ;
 
     std::shared_ptr<BItem> &infoVal = (*torrMetaDict)[BString::create("info")];
     std::shared_ptr<BDictionary> infoDict = infoVal->as<BDictionary>();
@@ -76,10 +77,6 @@ void TorrentMeta::parseFile(std::string filename)
     this->sha1Sums = ((*infoDict)[BString::create("pieces")])->as<BString>()->value();
 }
 
-std::string TorrentMeta::getAnnounce() const
-{
-    return this->announce;
-}
 
 void TorrentMeta::printAll() const
 {
@@ -93,7 +90,7 @@ void TorrentMeta::printAll() const
     }
     std::cout << std::endl;
     std::cout.flags(f);
-    std::cout << "Length: " << this->lengthSum << std::endl;
+    std::cout << "Length sum: " << this->lengthSum << std::endl;
     std::cout << "Files: " << files.size() << std::endl;
     std::cout << "Base directory: " << baseDir << std::endl;
     for (auto &file : files)
