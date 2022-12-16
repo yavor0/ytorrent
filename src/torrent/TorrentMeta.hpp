@@ -30,7 +30,7 @@ public:
     inline std::string get_announce() const { return this->announce; }
     inline std::string get_baseDir() const { return this->baseDir; }
     inline size_t get_lengthSum() const { return this->lengthSum; }
-
+    inline std::uint32_t* get_infoHash() { return infoHash; } // non-const
 };
 
 #endif
