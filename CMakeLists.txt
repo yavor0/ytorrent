@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(ytorrent)
 add_executable(${PROJECT_NAME} 
     main.cpp
+    src/utils/Utils.cpp
     src/torrent/TorrentMeta.cpp
     src/torrent/Tracker.cpp
     )
