@@ -39,11 +39,16 @@ void Torrent::trackerQuery()
     auto infoHashArr = getBytesEndianIndependent(tm.infoHash);
     std::string strInfoHash(std::begin(infoHashArr), std::end(infoHashArr));
     const char myPeerId[20] = "-YT0000000000000000";
-    buf << "GET /announce?" << "event=started"
-        << "&info_hash=" << urlEncode(strInfoHash) << "&port=6881" << "&compact=1"
-        << "&peer_id=-YT00000000000000000" << "&downloaded=" << 0 << "&uploaded=" << 0
-        << "&left=" << tm.lengthSum << " HTTP/1.0\r\n"
-        << "Host: " << tm.announce.host << "\r\n\r\n";
+    buf << "GET " << tm.announce.announcePath << "?"
+        << "info_hash=" << urlEncode(strInfoHash) << "&peer_id=-YT00000000000000000" << "&port=6881"
+        << "&uploaded=" << 0 << "&downloaded=" << 0
+        << "&left=" << tm.lengthSum << "&compact=1"
+        << tm.announce.passKeyParam
+        << " HTTP/1.0\r\n"
+        << "Host: " << tm.announce.host << "\r\n"
+        << "User-Agent: myTestTorrent" << "\r\n"
+        << "Connection: close" << "\r\n"
+        << "\r\n";
     boost::asio::write(socket, params);
 
     boost::asio::streambuf response;
@@ -88,69 +93,3 @@ void Torrent::trackerQuery()
 
     std::cout << &response << std::endl;
 }
-
-// boost::asio::ip::tcp::iostream s;
-
-// // The entire sequence of I/O operations must complete within 60 seconds.
-// // If an expiry occurs, the socket is automatically closed and the stream
-// // becomes bad.
-// s.expires_after(std::chrono::seconds(60));
-// UrlMeta m = tm.get_announce();
-// s.connect(m.host, m.port);
-// if (!s)
-// {
-//     std::cout << "Unable to connect: " << s.error().message() << "\n";
-//     return;
-// }
-
-// // Send the request. We specify the "Connection: close" header so that the
-// // server will close the socket after transmitting the response. This will
-// // allow us to treat all data up until the EOF as the content.
-
-// auto infoHashArr = getBytesEndianIndependent(tm.infoHash);
-// std::string strInfoHash(std::begin(infoHashArr), std::end(infoHashArr));
-// const char myPeerId[20] = "-YT0000000000000000";
-// std::cout << urlEncode(strInfoHash) << std::endl;
-// std::cout << urlEncode(myPeerId) << std::endl;
-// s << "GET /announce?" << "info_hash=" << urlEncode(strInfoHash) << "&compact=1"
-// << "&peer_id=" << urlEncode(myPeerId) << "&downloaded=" << 0 << "&uploaded=" << 0
-// << "&left=" << tm.lengthSum << " HTTP/1.0\r\n"
-// << "Host: " << tm.announce.host << "\r\n\r\n";
-
-// //  " HTTP/1.0\r\n";
-// // s << "Host: " << argv[1] << "\r\n";
-// // s << "Accept: */*\r\n";
-// // s << "Connection: close\r\n\r\n";
-
-// // buf << "GET /announce?" << req << "info_hash=" << urlencode(std::string(infoHash, 20)) << "&port=" << m_tport << "&compact=1&key=1337T0RRENT"
-// // << "&peer_id=" << urlencode(std::string((const char *)m_torrent->peerId(), 20)) << "&downloaded=" << r.downloaded << "&uploaded=" << r.uploaded
-// // << "&left=" << r.remaining << " HTTP/1.0\r\n"
-// // << "Host: " << m_host << "\r\n"
-// // << "\r\n";
-
-// // Check that response is OK.
-// std::string http_version;
-// s >> http_version;
-// unsigned int status_code;
-// s >> status_code;
-// std::string status_message;
-// std::getline(s, status_message);
-// if (!s || http_version.substr(0, 5) != "HTTP/")
-// {
-//     std::cout << "Invalid response\n";
-//     return;
-// }
-// if (status_code != 200)
-// {
-//     std::cout << "Response returned with status code " << status_code << "\n";
-//     // return ;
-// }
-
-// // Process the response headers, which are terminated by a blank line.
-// std::string header;
-// while (std::getline(s, header) && header != "\r")
-//     std::cout << header << "\n";
-// std::cout << "\n";
-
-// // Write the remaining data to output.
-// std::cout << s.rdbuf();

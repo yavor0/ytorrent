@@ -28,8 +28,8 @@ std::string urlEncode(const std::string value)
 UrlMeta parseTrackerUrl(std::string url)
 {
 	UrlMeta urlMeta;
-	std::regex httpOrHttpsWithPort("^(https?://)([^:/]+)(:\\d+)(/ann[^\\?]*)(\\?.*)?");
-	std::regex httpOrHttpsWithoutPort("^(https?://)([^:/]+)(/ann[^\\?]*)(\\?.*)?");
+	std::regex httpOrHttpsWithPort("^(https?://)([^:/]+)(:\\d+)(/ann[^\\?]*)(\\?passkey=.*)?");
+	std::regex httpOrHttpsWithoutPort("^(https?://)([^:/]+)(/ann[^\\?]*)(\\?passkey=.*)?");
 	std::smatch match;
 	if (std::regex_match(url, match, httpOrHttpsWithPort))
 	{
@@ -39,8 +39,8 @@ UrlMeta parseTrackerUrl(std::string url)
 		urlMeta.port.erase(0, 1);
 		urlMeta.announcePath = match[4];
 		if(match.size() == 6)
-			urlMeta.additonalArgs = match[5];
-			urlMeta.additonalArgs.erase(0, 1);
+			urlMeta.passKeyParam = match[5];
+			std::replace(urlMeta.passKeyParam.begin(), urlMeta.passKeyParam.end(), '?', '&');
 	}
 	else if (std::regex_match(url, match, httpOrHttpsWithoutPort))
 	{
@@ -50,13 +50,14 @@ UrlMeta parseTrackerUrl(std::string url)
 		urlMeta.port = "80";
 		urlMeta.announcePath = match[3];
 		if(match.size() == 5)
-			urlMeta.additonalArgs = match[4];
-			urlMeta.additonalArgs.erase(0, 1);
+			urlMeta.passKeyParam = match[4];
+			std::replace(urlMeta.passKeyParam.begin(), urlMeta.passKeyParam.end(), '?', '&');
 	}
 	else
 	{
 		std::cout << "No match found" << std::endl;
 	}
+
 	return urlMeta;
 }
 

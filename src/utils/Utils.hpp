@@ -9,7 +9,7 @@ struct UrlMeta
     std::string host;
     std::string port;
 	std::string announcePath;
-	std::string additonalArgs;
+	std::string passKeyParam;
 };
 
 std::string urlEncode(const std::string url);

@@ -16,7 +16,7 @@ void TorrentMeta::parseFile(std::string filename)
     // extract announce
     std::shared_ptr<BItem> &annVal = (*torrMetaDict)[BString::create("announce")]; //
     std::shared_ptr<BString> bStrAnn = annVal->as<BString>();
-    this->announce = parseUrl(bStrAnn->value());
+    this->announce = parseTrackerUrl(bStrAnn->value());
 
     // std::string unparsedAnnounce = bStrAnn->value();
     // this->announce = unparsedAnnounce.substr(0, unparsedAnnounce.find("/ann"));
@@ -84,6 +84,8 @@ void TorrentMeta::printAll() const
     std::cout << "Announce protocol: " << announce.protocol << std::endl;
     std::cout << "Announce host: " << announce.host << std::endl;
     std::cout << "Announce port: " << announce.port << std::endl;
+    std::cout << "Announce path: " << announce.announcePath << std::endl;
+    std::cout << "Announce passkey param: " << announce.passKeyParam << std::endl;
 
     std::cout << "Info hash: ";
     for (int i = 0; i < 5; i++)
