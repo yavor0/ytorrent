@@ -8,10 +8,12 @@ struct UrlMeta
     std::string protocol;
     std::string host;
     std::string port;
+	std::string announcePath;
+	std::string additonalArgs;
 };
 
 std::string urlEncode(const std::string url);
-UrlMeta parseUrl(std::string url);
+UrlMeta parseTrackerUrl(std::string url);
 
 
 template <typename T, size_t N>
