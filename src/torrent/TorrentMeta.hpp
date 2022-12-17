@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include "bencoding/bencoding.h"
+#include "Utils.hpp"
 
 struct TorrentFile
 {
@@ -16,7 +17,7 @@ class TorrentMeta
 {
 private:
     std::uint32_t infoHash[5] = {0};
-    std::string announce;
+    UrlMeta announce;
     std::string baseDir;
     std::vector<TorrentFile> files;
     std::string sha1Sums;
@@ -27,10 +28,11 @@ public:
     void parseFile(std::string filename);
 
     void printAll() const;
-    inline std::string get_announce() const { return this->announce; }
+    inline UrlMeta get_announce() const { return this->announce; }
     inline std::string get_baseDir() const { return this->baseDir; }
     inline size_t get_lengthSum() const { return this->lengthSum; }
     inline std::uint32_t* get_infoHash() { return infoHash; } // non-const
+    friend class Torrent;
 };
 
 #endif

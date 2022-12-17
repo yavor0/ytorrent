@@ -4,7 +4,7 @@ add_executable(${PROJECT_NAME}
     main.cpp
     src/utils/Utils.cpp
     src/torrent/TorrentMeta.cpp
-    src/torrent/Tracker.cpp
+    src/torrent/Torrent.cpp
     )
 
 set(CMAKE_BUILD_TYPE Debug)

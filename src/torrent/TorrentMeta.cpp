@@ -16,15 +16,16 @@ void TorrentMeta::parseFile(std::string filename)
     // extract announce
     std::shared_ptr<BItem> &annVal = (*torrMetaDict)[BString::create("announce")]; //
     std::shared_ptr<BString> bStrAnn = annVal->as<BString>();
-    std::string unparsedAnnounce = bStrAnn->value();
-    this->announce = unparsedAnnounce.substr(0, unparsedAnnounce.find("/ann")); ;
+    this->announce = parseUrl(bStrAnn->value());
+
+    // std::string unparsedAnnounce = bStrAnn->value();
+    // this->announce = unparsedAnnounce.substr(0, unparsedAnnounce.find("/ann"));
 
     std::shared_ptr<BItem> &infoVal = (*torrMetaDict)[BString::create("info")];
     std::shared_ptr<BDictionary> infoDict = infoVal->as<BDictionary>();
 
     // infoHash
     std::string strInfoHash = bencoding::encode(infoDict);
-
     boost::uuids::detail::sha1 sha1;
     sha1.process_bytes(strInfoHash.data(), strInfoHash.size());
     sha1.get_digest(this->infoHash);
@@ -77,12 +78,13 @@ void TorrentMeta::parseFile(std::string filename)
     this->sha1Sums = ((*infoDict)[BString::create("pieces")])->as<BString>()->value();
 }
 
-
 void TorrentMeta::printAll() const
 {
     std::ios_base::fmtflags f(std::cout.flags()); // used to reset the cout flags after std::hex is used
-    std::cout << "Announce: " << announce << std::endl;
-    
+    std::cout << "Announce protocol: " << announce.protocol << std::endl;
+    std::cout << "Announce host: " << announce.host << std::endl;
+    std::cout << "Announce port: " << announce.port << std::endl;
+
     std::cout << "Info hash: ";
     for (int i = 0; i < 5; i++)
     {
@@ -90,6 +92,7 @@ void TorrentMeta::printAll() const
     }
     std::cout << std::endl;
     std::cout.flags(f);
+
     std::cout << "Length sum: " << this->lengthSum << std::endl;
     std::cout << "Files: " << files.size() << std::endl;
     std::cout << "Base directory: " << baseDir << std::endl;

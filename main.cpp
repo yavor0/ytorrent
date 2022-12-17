@@ -3,8 +3,9 @@
 #include <memory>
 #include <string>
 
+#include "Utils.hpp"
 #include "TorrentMeta.hpp"
-#include "Tracker.hpp"
+#include "Torrent.hpp"
 // #include "bencoding/bencoding.h"
 
 using namespace std;
@@ -16,11 +17,9 @@ int main(int argc, char **argv) {
 	tm.parseFile(filename);
 	tm.printAll();
 
-
-
-	// Tracker tr(tm.get_announce());
-	// std::cout << tr.get_url();
-	// tr.query();
+	
+	Torrent tr(tm);
+	tr.trackerQuery();
 
 	return 0;
 }
