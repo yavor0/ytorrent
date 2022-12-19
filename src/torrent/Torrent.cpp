@@ -1,4 +1,5 @@
 #include "Torrent.hpp"
+#include <sstream>
 
 #include <iostream>
 
@@ -6,6 +7,7 @@ Torrent::Torrent(TorrentMeta &tm)
     : tm(tm)
 {
 }
+
 
 void Torrent::trackerQuery()
 {
@@ -38,16 +40,19 @@ void Torrent::trackerQuery()
 
     auto infoHashArr = getBytesEndianIndependent(tm.infoHash);
     std::string strInfoHash(std::begin(infoHashArr), std::end(infoHashArr));
-    const char myPeerId[20] = "-YT0000000000000000";
+    // const char myPeerId[20] = "-YT0000000000000000";
     buf << "GET " << tm.announce.announcePath << "?"
-        << "info_hash=" << urlEncode(strInfoHash) << "&peer_id=-YT00000000000000000" << "&port=6881"
+        << "info_hash=" << urlEncode(strInfoHash) << "&peer_id=-YT00000000000000000"
+        << "&port=6881"
         << "&uploaded=" << 0 << "&downloaded=" << 0
         << "&left=" << tm.lengthSum << "&compact=1"
         << tm.announce.passKeyParam
         << " HTTP/1.0\r\n"
         << "Host: " << tm.announce.host << "\r\n"
-        << "User-Agent: myTestTorrent" << "\r\n"
-        << "Connection: close" << "\r\n"
+        << "User-Agent: myTestTorrent"
+        << "\r\n"
+        << "Connection: close"
+        << "\r\n"
         << "\r\n";
     boost::asio::write(socket, params);
 
@@ -91,5 +96,32 @@ void Torrent::trackerQuery()
     }
     socket.close();
 
-    std::cout << &response << std::endl;
+    std::string header;
+    while (std::getline(rbuf, header) && header != "\r")
+        ;
+
+    std::ostringstream os;
+    os << &response;
+    std::string respBuf = os.str();
+    // std::cout << respBuf << std::endl;
+
+    std::shared_ptr<bencoding::BItem> bRespDict = bencoding::decode(respBuf);
+    std::shared_ptr<bencoding::BDictionary> respDict = bRespDict->as<bencoding::BDictionary>();
+    std::string peersInf = ((*respDict)[bencoding::BString::create("peers")])->as<bencoding::BString>()->value(); // ADD ERROR HANDLING
+    // std::cout << peersInf.length() << std::endl;
+
+    for (int i = 0; i < peersInf.length(); i += 6)
+    {
+        const uint8_t *ipAndPort = (const uint8_t *)peersInf.c_str() + i;
+
+        // POTENTIAL ENDIANESS PROBLEM
+        std::string IP = parseIp(readAsLE32(ipAndPort)); // using readLE because it make the function parseIp more readable and intuitive
+        std::string port = std::to_string(readAsBE16(ipAndPort + 4));
+        std::cout << IP << ":" << port << std::endl;
+    }
 }
+
+
+
+
+
