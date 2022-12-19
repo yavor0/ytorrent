@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(ytorrent)
-add_compile_options(-Wall -Wextra -Wpedantic -march=native)
+add_compile_options(-Wall -Wextra -Wpedantic -Weffc++ -march=native)
 add_executable(${PROJECT_NAME} 
     main.cpp
     src/utils/Utils.cpp
