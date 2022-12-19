@@ -1,20 +1,20 @@
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef UTILS_H
+#define UTILS_H
 #include <string>
 #include <array>
 
 struct UrlMeta
 {
-    std::string protocol;
-    std::string host;
-    std::string port;
+	std::string protocol;
+	std::string host;
+	std::string port;
 	std::string announcePath;
 	std::string passKeyParam;
 };
 
 std::string urlEncode(const std::string url);
 UrlMeta parseTrackerUrl(std::string url);
-
+std::string parseIp(uint32_t ip);
 
 template <typename T, size_t N>
 std::array<unsigned char, N * sizeof(T)> getBytesEndianIndependent(const T (&arrRef)[N])
@@ -42,6 +42,38 @@ std::array<unsigned char, N * sizeof(T)> getBytesEndianIndependent(const T (&arr
 #error "Unknown endianness detected"
 #endif
 	return result;
+}
+
+// ---------------- Little Endian ----------------
+inline uint16_t readAsLE16(const uint8_t *addr)
+{
+	return (uint16_t)addr[1] << 8 | (uint16_t)addr[0];
+}
+
+inline uint32_t readAsLE32(const uint8_t *addr)
+{
+	return (uint32_t)readAsLE16(addr + 2) << 16 | readAsLE16(addr);
+}
+
+inline uint64_t readAsLE64(const uint8_t *addr)
+{
+	return (uint64_t)readAsLE32(addr + 4) << 32 | readAsLE32(addr);
+}
+
+// ---------------- Big Endian ----------------
+inline uint16_t readAsBE16(const uint8_t *addr)
+{														 // inturpret this function as "take addr and pretend it's a pointer to the start of big endian buffer and then actually perform platform-independent bit shift operations in order to store them".
+	return (uint16_t)addr[1] | (uint16_t)(addr[0]) << 8; // maths operations are platform independent
+}
+
+inline uint32_t readAsBE32(const uint8_t *addr)
+{
+	return (uint32_t)readAsBE16(addr + 2) | readAsBE16(addr) << 16;
+}
+
+inline uint64_t readAsBE64(const uint8_t *addr)
+{
+	return (uint64_t)readAsBE32(addr + 4) | (uint64_t)readAsBE32(addr) << 32;
 }
 
 #endif

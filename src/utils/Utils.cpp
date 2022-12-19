@@ -38,9 +38,11 @@ UrlMeta parseTrackerUrl(std::string url)
 		urlMeta.port = match[3];
 		urlMeta.port.erase(0, 1);
 		urlMeta.announcePath = match[4];
-		if(match.size() == 6)
+		if (match.size() == 6)
+		{
 			urlMeta.passKeyParam = match[5];
 			std::replace(urlMeta.passKeyParam.begin(), urlMeta.passKeyParam.end(), '?', '&');
+		}
 	}
 	else if (std::regex_match(url, match, httpOrHttpsWithoutPort))
 	{
@@ -49,9 +51,11 @@ UrlMeta parseTrackerUrl(std::string url)
 		// urlMeta.port = (urlMeta.protocol == std::string("http")) ? "80" : "443";
 		urlMeta.port = "80";
 		urlMeta.announcePath = match[3];
-		if(match.size() == 5)
+		if (match.size() == 5)
+		{
 			urlMeta.passKeyParam = match[4];
 			std::replace(urlMeta.passKeyParam.begin(), urlMeta.passKeyParam.end(), '?', '&');
+		}
 	}
 	else
 	{
@@ -60,5 +64,18 @@ UrlMeta parseTrackerUrl(std::string url)
 
 	return urlMeta;
 }
+std::string parseIp(uint32_t ip)
+{
+	std::ostringstream formatted;
+	uint8_t byte3 = (uint8_t)((ip & 0xFF000000) >> 24);
+	uint8_t byte2 = (uint8_t)((ip & 0x00FF0000) >> 16);
+	uint8_t byte1 = (uint8_t)((ip & 0x0000FF00) >> 8);
+	uint8_t byte0 = (uint8_t)(ip & 0x000000FF);
 
+	// really ugly but does the trick
+	// basically: https://stackoverflow.com/a/31991844/18301773
+	// and: https://en.cppreference.com/w/cpp/language/implicit_conversion#Integral_promotion
+	formatted << 0 + byte0 << "." << 0 + byte1 << "." << 0 + byte2 << "." << 0 + byte3;
+	return formatted.str();
+}
 
