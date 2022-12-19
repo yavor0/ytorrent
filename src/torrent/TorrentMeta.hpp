@@ -3,7 +3,11 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
 #include "bencoding/bencoding.h"
+#include <boost/uuid/detail/sha1.hpp>
+#pragma GCC diagnostic pop
 #include "Utils.hpp"
 
 struct TorrentFile
@@ -21,7 +25,7 @@ private:
     std::string baseDir;
     std::vector<TorrentFile> files;
     std::string sha1Sums;
-    size_t lengthSum;
+    size_t lengthSum = 0;
 
 public:
     TorrentMeta() = default;

@@ -1,13 +1,13 @@
 #include "TorrentMeta.hpp"
 #include <iostream> // REMOVE
 #include <typeinfo>
-#include <boost/uuid/detail/sha1.hpp>
 
-using namespace bencoding;
+
+
 
 void TorrentMeta::parseFile(std::string filename)
 { // ADD ERROR HANDLING
-
+    using namespace bencoding;
     std::shared_ptr<BItem> decodedData;
     std::ifstream input(filename);
     decodedData = bencoding::decode(input);

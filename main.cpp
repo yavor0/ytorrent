@@ -9,7 +9,6 @@
 // #include "bencoding/bencoding.h"
 
 using namespace std;
-using namespace bencoding;
 
 int main(int argc, char **argv) {
 	TorrentMeta tm;
