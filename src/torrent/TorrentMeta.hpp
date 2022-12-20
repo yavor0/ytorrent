@@ -3,11 +3,20 @@
 #include <string>
 #include <fstream>
 #include <vector>
+
+
+// https://stackoverflow.com/a/40020484/18301773
+// enable_shared_from_this requires public inheritence otherwise bad_weak_ptr is thrown from Bitem
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor" 
+#include "bencoding/bencoding.h"
+#pragma GCC diagnostic pop
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Weffc++"
-#include "bencoding/bencoding.h"
 #include <boost/uuid/detail/sha1.hpp>
 #pragma GCC diagnostic pop
+
 #include "Utils.hpp"
 
 struct TorrentFile
