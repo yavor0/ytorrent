@@ -18,4 +18,5 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/dependencies/cpp-bencoding/install/include")
 target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/src/torrent")
+target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/src/net")
 target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/src/utils")
