@@ -8,8 +8,13 @@ Torrent::Torrent(TorrentMeta &tm)
 {
 }
 
+void Torrent::beginDownloading()
+{
+    this->trackerQueryForPeers();
+    this->connectToPeers();
+}
 
-void Torrent::trackerQuery()
+void Torrent::trackerQueryForPeers()
 {
     boost::asio::ip::tcp::resolver resolver(context);
     boost::asio::ip::tcp::resolver::query query(tm.announce.host, tm.announce.port);
@@ -40,7 +45,6 @@ void Torrent::trackerQuery()
 
     auto infoHashArr = getBytesEndianIndependent(tm.infoHash);
     std::string strInfoHash(std::begin(infoHashArr), std::end(infoHashArr));
-    // const char myPeerId[20] = "-YT0000000000000000";
     buf << "GET " << tm.announce.announcePath << "?"
         << "info_hash=" << urlEncode(strInfoHash) << "&peer_id=-YT00000000000000000"
         << "&port=6881"
@@ -102,10 +106,10 @@ void Torrent::trackerQuery()
 
     std::ostringstream os;
     os << &response;
-    std::string respBuf = os.str();
+    std::string trackerResp = os.str();
     // std::cout << respBuf << std::endl;
 
-    std::shared_ptr<bencoding::BItem> bRespDict = bencoding::decode(respBuf);
+    std::shared_ptr<bencoding::BItem> bRespDict = bencoding::decode(trackerResp);
     std::shared_ptr<bencoding::BDictionary> respDict = bRespDict->as<bencoding::BDictionary>();
     std::string peersInf = ((*respDict)[bencoding::BString::create("peers")])->as<bencoding::BString>()->value(); // ADD ERROR HANDLING
     // std::cout << peersInf.length() << std::endl;
@@ -113,15 +117,16 @@ void Torrent::trackerQuery()
     for (int i = 0; i < peersInf.length(); i += 6)
     {
         const uint8_t *ipAndPort = (const uint8_t *)peersInf.c_str() + i;
-
-        // POTENTIAL ENDIANESS PROBLEM
         std::string IP = parseIp(readAsLE32(ipAndPort)); // using readLE because it make the function parseIp more readable and intuitive
         std::string port = std::to_string(readAsBE16(ipAndPort + 4));
-        std::cout << IP << ":" << port << std::endl;
+        peers.push_back(std::pair<std::string, std::string>(IP, port));
     }
 }
 
-
-
-
-
+void Torrent::connectToPeers()
+{
+    for (auto it = peers.begin(); it != peers.end(); ++it)
+    {
+        std::cout << "Ip: " << it->first << ", Port: " << it->second << std::endl;
+    }
+}
