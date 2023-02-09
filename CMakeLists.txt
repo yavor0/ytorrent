@@ -3,9 +3,11 @@ project(ytorrent)
 add_compile_options(-Wall -Wextra -Wpedantic -Weffc++ -march=native)
 add_executable(${PROJECT_NAME} 
     main.cpp
-    src/utils/Utils.cpp
-    src/torrent/TorrentMeta.cpp
-    src/torrent/Torrent.cpp
+    src/torrent/torrent.cpp
+    src/torrent/tracker.cpp
+    src/net/connection.cpp
+    src/net/inputmessage.cpp
+    src/net/outputmessage.cpp
     )
 
 set(CMAKE_BUILD_TYPE Debug)
