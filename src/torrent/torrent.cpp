@@ -125,5 +125,24 @@ bool Torrent::open(const std::string &fileName, const std::string &downloadDir)
 	return true;
 }
 
+void Torrent::rawConnectPeers(const uint8_t *peers, size_t size)
+{
+	m_peers.reserve(size / 6);
 
+	// 6 bytes each (first 4 is ip address, last 2 port) all in big endian notation
+	for (size_t i = 0; i < size; i += 6) {
+		const uint8_t *iport = peers + i;
+		uint32_t ip =isLittleEndian() ? readAsLE32(iport) : readAsBE32(iport);
+
+		auto it = std::find_if(m_peers.begin(), m_peers.end(),
+				[ip] (const PeerPtr &peer) { return peer->ip() == ip; });
+		if (it != m_peers.end())
+			continue;
+
+		// Asynchronously connect to that peer, and do not add it to our
+		// active peers list unless a connection was established successfully.
+		auto peer = std::make_shared<Peer>(this);
+		peer->connect(parseIp(ip), std::to_string(readAsBE16(iport + 4)));
+	}
+}
 

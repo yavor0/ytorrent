@@ -39,6 +39,8 @@ public:
 
 
 protected:
+	void rawConnectPeers(const uint8_t *peers, size_t size);
+
 private:
 	struct Piece {
 		bool done;
