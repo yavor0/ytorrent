@@ -3,7 +3,7 @@
 #include <random>
 #include <boost/array.hpp>
 
-bool Tracker::query(const TrackerQuery &req)
+bool Tracker::query(const TrackerQuery &req) // future abstraction for whenever udp tracker querying functionality is implemented
 {
 	return httpRequest(req);
 }

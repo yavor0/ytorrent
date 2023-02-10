@@ -145,4 +145,16 @@ void Torrent::rawConnectPeers(const uint8_t *peers, size_t size)
 		peer->connect(parseIp(ip), std::to_string(readAsBE16(iport + 4)));
 	}
 }
+Torrent::DownloadError Torrent::download(uint16_t port)
+{
+	size_t piecesNeeded = m_pieces.size();
+	if (m_completedPieces == piecesNeeded)
+		return DownloadError::AlreadyDownloaded;
+
+	if(!queryTracker(m_mainTracker, makeTrackerQuery(TrackerEvent::Started), port))
+		return DownloadError::TrackerQueryFailure;
+
+
+
+}
 
