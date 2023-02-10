@@ -21,5 +21,6 @@ UrlMeta parseTrackerUrl(const std::string& url);
 std::string urlEncode(const std::string& url);
 std::string parseIp(uint32_t ip);
 
+std::string getcwd();
 
 #endif
