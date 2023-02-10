@@ -16,7 +16,7 @@ namespace asio = boost::asio;
 class Connection
 {
 	typedef std::function<void()> ConnectCallback;
-
+	typedef std::function<void(const uint8_t *, size_t)> ReadCallback;
 
 public:
 	Connection();
@@ -24,11 +24,19 @@ public:
 
 	void connect(const std::string &host, const std::string &port, const ConnectCallback &cb);
 	bool isConnected() const { return m_socket.is_open(); }
+	inline void write(const OutputMessage &o) { write(o.data(0), o.size()); }
+	void write(const uint8_t *data, size_t bytes);
+	void read_partial(size_t bytes, const ReadCallback &rc);
 
 
 protected:
+	void internalWrite(const boost::system::error_code &);
+
 	void handleResolve(const boost::system::error_code &, asio::ip::basic_resolver<asio::ip::tcp>::iterator);
 	void handleConnect(const boost::system::error_code &);
+
+
+
 private:
 	asio::deadline_timer m_delayedWriteTimer;
 	asio::ip::tcp::resolver m_resolver;
