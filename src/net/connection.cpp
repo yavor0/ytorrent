@@ -1,12 +1,12 @@
 #include "connection.hpp"
 
 asio::io_service g_service;
-static std::mutex g_connectionLock;
-static std::list<std::shared_ptr<asio::streambuf>> g_outputStreams;
+static std::mutex connectionLock;
+static std::list<std::shared_ptr<asio::streambuf>> outputStreams;
 
-Connection::Connection() : m_delayedWriteTimer(g_service),
-						   m_resolver(g_service),
-						   m_socket(g_service)
+Connection::Connection() : delayedWriteTimer(g_service),
+						   resolver(g_service),
+						   socket(g_service)
 {
 }
 
@@ -25,18 +25,31 @@ void Connection::connect(const std::string &host, const std::string &port, const
 {
 	asio::ip::tcp::resolver::query query(host, port);
 
-	m_cb = cb;
-	m_resolver.async_resolve(
+	this->connCB = cb;
+	this->resolver.async_resolve(
 		query,
 		std::bind(&Connection::handleResolve, this, std::placeholders::_1, std::placeholders::_2));
 }
-void Connection::handleResolve(const boost::system::error_code &e,
-							   asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
-{
-	if (e)
-		return handleError(e);
 
-	m_socket.async_connect(*endpoint, std::bind(&Connection::handleConnect, this, std::placeholders::_1));
+void Connection::close(bool warn)
+{
+	if (!isConnected())
+	{
+		if (this->errorCB && warn)
+		{
+			this->errorCB("Connection::close(): Called on an already closed connection!");
+		}
+		return;
+	}
+
+	boost::system::error_code ec;
+	this->socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+	if (ec && warn && this->errorCB)
+	{
+		this->errorCB(ec.message());
+	}
+
+	this->socket.close();
 }
 
 void Connection::write(const uint8_t *bytes, size_t size)
@@ -44,67 +57,144 @@ void Connection::write(const uint8_t *bytes, size_t size)
 	if (!isConnected())
 		return;
 
-	if (!m_outputStream)
+	if (!this->outputStream)
 	{
-		g_connectionLock.lock();
-		if (!g_outputStreams.empty())
+		connectionLock.lock();
+		if (!outputStreams.empty())
 		{
-			m_outputStream = g_outputStreams.front();
-			g_outputStreams.pop_front();
+			this->outputStream = outputStreams.front();
+			outputStreams.pop_front();
 		}
 		else
-			m_outputStream = std::shared_ptr<asio::streambuf>(new asio::streambuf);
-		g_connectionLock.unlock();
+		{
+			this->outputStream = std::shared_ptr<asio::streambuf>(new asio::streambuf);
+		}
 
-		m_delayedWriteTimer.cancel();
-		m_delayedWriteTimer.expires_from_now(boost::posix_time::milliseconds(10));
-		m_delayedWriteTimer.async_wait(std::bind(&Connection::internalWrite, this, std::placeholders::_1));
+		connectionLock.unlock();
+
+		this->delayedWriteTimer.cancel();
+		this->delayedWriteTimer.expires_from_now(boost::posix_time::milliseconds(10));
+		this->delayedWriteTimer.async_wait(std::bind(&Connection::internalWrite, this, std::placeholders::_1));
 	}
 
-	std::ostream os(m_outputStream.get());
+	std::ostream os(this->outputStream.get());
 	os.write((const char *)bytes, size);
 	os.flush();
+}
+
+void Connection::read(size_t bytes, const ReadCallback &rc)
+{
+	if (!isConnected())
+	{
+		return;
+	}
+
+	this->readCB = rc;
+	asio::async_read(
+		this->socket, asio::buffer(this->inputStream.prepare(bytes)),
+		std::bind(&Connection::handleRead, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void Connection::internalWrite(const boost::system::error_code &e)
 {
 	if (e == asio::error::operation_aborted)
+	{
 		return;
+	}
 
-	std::shared_ptr<asio::streambuf> outputStream = m_outputStream;
-	m_outputStream = nullptr;
+	std::shared_ptr<asio::streambuf> outputStream = this->outputStream;
+	this->outputStream = nullptr;
 
 	asio::async_write(
-		m_socket, *outputStream,
+		this->socket, *outputStream,
 		std::bind(&Connection::handleWrite, this, std::placeholders::_1, std::placeholders::_2, outputStream));
 }
+
 void Connection::handleWrite(const boost::system::error_code &e, size_t bytes, std::shared_ptr<asio::streambuf> outputStream)
 {
-	m_delayedWriteTimer.cancel();
+	this->delayedWriteTimer.cancel();
 	if (e == asio::error::operation_aborted)
+	{
 		return;
+	}
 
 	outputStream->consume(outputStream->size());
-	g_outputStreams.push_back(outputStream);
+	outputStreams.push_back(outputStream);
 	if (e)
+	{
 		handleError(e);
+	}
 }
 
-void Connection::read_partial(size_t bytes, const ReadCallback &rc)
+void Connection::handleRead(const boost::system::error_code &e, size_t readSize)
 {
-	if (!isConnected())
-		return;
+	if (e)
+	{
+		return handleError(e);
+	}
 
-	m_rc = rc;
-	m_socket.async_read_some(
-		asio::buffer(m_inputStream.prepare(bytes)),
-		std::bind(&Connection::handleRead, this, std::placeholders::_1, std::placeholders::_2));
+	if (this->readCB)
+	{
+		const uint8_t *data = asio::buffer_cast<const uint8_t *>(this->inputStream.data());
+		this->readCB(data, readSize);
+	}
+
+	this->inputStream.consume(readSize);
+}
+
+void Connection::handleResolve(
+	const boost::system::error_code &e,
+	asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
+{
+	if (e)
+	{
+		return handleError(e);
+	}
+
+	this->socket.async_connect(*endpoint, std::bind(&Connection::handleConnect, this, std::placeholders::_1));
 }
 
 void Connection::handleConnect(const boost::system::error_code &e)
 {
 	if (e)
+	{
 		return handleError(e);
-	else if (m_cb)
-		m_cb();
+	}
+	else if (this->connCB)
+	{
+		this->connCB();
+	}
+}
+
+void Connection::handleError(const boost::system::error_code &error)
+{
+	if (error == asio::error::operation_aborted)
+	{
+		return;
+	}
+
+	if (this->errorCB)
+	{
+		this->errorCB(error.message());
+	}
+	if (isConnected()) // User is free to close the connection before us
+	{
+		close();
+	}
+}
+uint32_t Connection::getIP() const
+{
+	if (!isConnected())
+	{
+		return 0;
+	}
+
+	boost::system::error_code error;
+	const asio::ip::tcp::endpoint ip = this->socket.remote_endpoint(error);
+	if (!error)
+	{
+		return asio::detail::socket_ops::host_to_network_long(ip.address().to_v4().to_ulong());
+	}
+
+	return 0;
 }
