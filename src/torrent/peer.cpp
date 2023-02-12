@@ -1,5 +1,5 @@
-#include "peer.h"
-#include "torrent.h"
+#include "peer.hpp"
+#include "torrent.hpp"
 #include <vector>
 #include <iostream>
 

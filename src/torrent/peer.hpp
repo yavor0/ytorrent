@@ -1,8 +1,8 @@
 #ifndef PEER_H
 #define PEER_H
 
-#include <net/connection.h>
-#include <net/inputmessage.h>
+#include <net/connection.hpp>
+#include <net/inputmessage.hpp>
 
 #include <memory>
 #include <vector>

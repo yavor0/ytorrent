@@ -1,7 +1,7 @@
-#include "torrent.h"
+#include "torrent.hpp"
 
-#include <net/connection.h>
-#include <utils/utils.h>
+#include <net/connection.hpp>
+#include <utils/utils.hpp>
 #include <random>
 #include <algorithm>
 #include <iostream>

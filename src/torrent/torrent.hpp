@@ -1,8 +1,8 @@
 #ifndef TORRENT_H
 #define TORRENT_H
 
-#include "peer.h"
-#include "tracker.h"
+#include "peer.hpp"
+#include "tracker.hpp"
 #include "bencoding/bencoding.h"
 
 #include <vector>

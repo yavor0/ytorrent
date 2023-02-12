@@ -4,12 +4,12 @@
 #include <boost/asio.hpp>
 #include <boost/system/error_code.hpp>
 
-#include <utils/utils.h>
+#include <utils/utils.hpp>
 
 #include <mutex>
 #include <list>
 
-#include "outputmessage.h"
+#include "outputmessage.hpp"
 
 namespace asio = boost::asio;
 

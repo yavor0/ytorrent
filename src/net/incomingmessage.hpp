@@ -1,7 +1,7 @@
 #ifndef INPUTMESSAGE_H
 #define INPUTMESSAGE_H
 
-#include <utils/transcoder.h>
+#include <utils/transcoder.hpp>
 #include <string>
 
 class InputMessage

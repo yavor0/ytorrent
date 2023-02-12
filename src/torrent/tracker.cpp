@@ -1,7 +1,6 @@
-#include "tracker.h"
-#include "torrent.h"
+#include "tracker.hpp"
+#include "torrent.hpp"
 #include <random>
-#include <boost/array.hpp>
 
 bool Tracker::query(const TrackerQuery &req) // future abstraction for whenever udp tracker querying functionality is implemented
 {

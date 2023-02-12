@@ -1,4 +1,4 @@
-#include "connection.h"
+#include "connection.hpp"
 
 asio::io_service g_service;
 static std::mutex g_connectionLock;
