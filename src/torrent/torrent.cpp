@@ -125,18 +125,20 @@ bool Torrent::open(const std::string &fileName, const std::string &downloadDir)
 	return true;
 }
 
-void Torrent::rawConnectPeers(const uint8_t *peers, size_t size)
+void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 {
-	m_peers.reserve(size / 6);
+	activePeers.reserve(size / 6);
 
 	// 6 bytes each (first 4 is ip address, last 2 port) all in big endian notation
-	for (size_t i = 0; i < size; i += 6) {
+	for (size_t i = 0; i < size; i += 6)
+	{
 		const uint8_t *iport = peers + i;
-		uint32_t ip =isLittleEndian() ? readAsLE32(iport) : readAsBE32(iport);
-
-		auto it = std::find_if(m_peers.begin(), m_peers.end(),
-				[ip] (const PeerPtr &peer) { return peer->ip() == ip; });
-		if (it != m_peers.end())
+		uint32_t ip = readAsLE32(iport);
+		// std::cout << "ENDIANESS:" << isLittleEndian() << std::endl;
+		auto it = std::find_if(activePeers.begin(), activePeers.end(),
+							   [ip](const std::shared_ptr<Peer> &peer)
+							   { return peer->getRawIp() == ip; });
+		if (it != activePeers.end())
 			continue;
 
 		// Asynchronously connect to that peer, and do not add it to our
@@ -154,7 +156,9 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	if(!queryTracker(m_mainTracker, makeTrackerQuery(TrackerEvent::Started), port))
 		return DownloadError::TrackerQueryFailure;
 
-
-
 }
 
+void Torrent::handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg)
+{
+	std::clog << name << ": " << peer->getStrIp() << " " << msg << std::endl;
+}
