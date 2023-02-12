@@ -5,9 +5,8 @@ add_executable(${PROJECT_NAME}
     main.cpp
     src/torrent/torrent.cpp
     src/torrent/tracker.cpp
+    src/torrent/peer.cpp
     src/net/connection.cpp
-    src/net/inputmessage.cpp
-    src/net/outputmessage.cpp
     )
 
 set(CMAKE_BUILD_TYPE Debug)
