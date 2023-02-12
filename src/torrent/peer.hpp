@@ -2,7 +2,7 @@
 #define PEER_H
 
 #include <net/connection.hpp>
-#include <net/inputmessage.hpp>
+#include <net/incomingmessage.hpp>
 
 #include <memory>
 #include <vector>
@@ -12,46 +12,33 @@ class Peer : public std::enable_shared_from_this<Peer>
 {
 	struct Piece;
 	enum State : uint8_t {
-		PS_AmChoked = 1 << 0,			// We choked this peer (aka we're not giving him anymore pieces)
-		PS_AmInterested = 1 << 1,		// We're interested in this peer's pieces
-		PS_PeerChoked = 1 << 2,			// Peer choked us
-		PS_PeerInterested = 1 << 3,		// Peer interested in our stuff
+		AmChoked = 1 << 0,			// I choked this peer (i.e. we're not giving him anymore pieces)
+		AmInterested = 1 << 1,		// I'm interested in this peer's pieces
+		PeerChoked = 1 << 2,			// Peer choked me
+		PeerInterested = 1 << 3,		// Peer interested in my stuff
 	};
 
 	enum MessageType : uint8_t {
-		MT_Choke		= 0,
-		MT_UnChoke		= 1,
-		MT_Interested		= 2,
-		MT_NotInterested	= 3,
-		MT_Have			= 4,
-		MT_Bitfield		= 5,
-		MT_Request		= 6,
-		MT_PieceBlock		= 7,
-		MT_Cancel		= 8,
-		MT_Port			= 9
+		CHOKE		= 0,
+		UNCHOKE		= 1,
+		INTERESTED		= 2,
+		NOT_INTERESTED	= 3,
+		HAVE			= 4,
+		BITFIELD		= 5,
+		REQUEST		= 6,
+		PIECE_BLOCK		= 7,
+		CANCEL		= 8,
+		PORT			= 9
 	};
 
-public:
-	Peer(Torrent *t);
-	~Peer();
-
-	inline void setId(const std::string &id) { m_peerId = id; }
-	inline std::string getIP() const { return m_conn->getIPString(); }
-	inline uint32_t ip() const { return m_conn->getIP(); }
-	void disconnect();
-	void connect(const std::string &ip, const std::string &port);
-
-protected:
-	void handle(const uint8_t *data, size_t size);
-	void handleMessage(MessageType mType, InputMessage in);
-
 private:
-	struct PieceBlock {
+	friend class Torrent;
+	struct Block {
 		size_t size;
 		uint8_t *data;
 
-		PieceBlock() { data = nullptr; size = 0; }
-		~PieceBlock() { delete []data; }
+		Block() { data = nullptr; size = 0; }
+		~Block() { delete []data; }
 	};
 
 	struct Piece {
@@ -60,15 +47,30 @@ private:
 		size_t numBlocks;
 
 		~Piece() { delete []blocks; }
-		PieceBlock *blocks;
+		Block *blocks;
 	};
 
-	std::string m_peerId;
-	uint8_t m_state;
-	Torrent *m_torrent;
-	Connection *m_conn;
+	std::vector<size_t> pieces;
+	std::vector<Piece *> pieceQueue;
+	std::string peerId;
+	uint8_t state;
+	Torrent *torrent;
+	Connection *conn;
 
-	friend class Torrent;
+	void handle(const uint8_t *data, size_t size);
+	void handleMessage(MessageType mType, IncomingMessage in);
+	void handleError(const std::string &);
+
+
+public:
+	Peer(Torrent *t);
+	~Peer();
+
+	inline void setId(const std::string &id) { peerId = id; }
+	inline std::string getStrIp() const { return conn->getIPString(); }
+	inline uint32_t getRawIp() const { return conn->getIP(); }
+	void disconnect();
+	void connect(const std::string &ip, const std::string &port);
 };
 
 
