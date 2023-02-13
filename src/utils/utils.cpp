@@ -12,7 +12,7 @@
 #include <stdexcept>
 
 // http://stackoverflow.com/a/7214192/502230
-std::string urlEncode(const std::string& value)
+std::string urlEncode(const std::string &value)
 {
 	std::ostringstream escaped;
 	escaped.fill('0');
@@ -46,7 +46,7 @@ std::string parseIp(uint32_t ip)
 	return formatted.str();
 }
 
-UrlMeta parseTrackerUrl(const std::string& url)
+UrlMeta parseTrackerUrl(const std::string &url)
 {
 	UrlMeta urlMeta;
 	std::regex httpOrHttpsWithPort("^(https?://)([^:/]+)(:\\d+)(/ann[^\\?]*)(\\?passkey=.*)?");
@@ -86,6 +86,22 @@ UrlMeta parseTrackerUrl(const std::string& url)
 	return urlMeta;
 }
 
+// http://stackoverflow.com/a/3758880/1551592
+std::string bytesToHumanReadable(uint32_t bytes, bool si)
+{
+	uint32_t u = si ? 1000 : 1024;
+	if (bytes < u)
+		return std::to_string(bytes) + " B";
+
+	size_t exp = static_cast<size_t>(std::log(bytes) / std::log(u));
+	const char *e = si ? "kMGTPE" : "KMGTPE";
+	std::ostringstream os;
+	os << static_cast<double>(bytes / std::pow(u, exp)) << " ";
+	os << e[exp - 1] << (si ? "" : "i") << "B";
+
+	return os.str();
+}
+
 // https://stackoverflow.com/a/2869667/18301773
 std::string getcwd()
 {
@@ -117,4 +133,11 @@ std::string getcwd()
 		}
 	}
 	throw std::runtime_error("Cannot determine the current path; the path is apparently unreasonably long");
+}
+
+
+bool nodeExists(const std::string &node)
+{
+	struct stat st;
+	return stat(node.c_str(), &st) == 0;
 }
