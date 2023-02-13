@@ -11,42 +11,49 @@ class Torrent;
 class Peer : public std::enable_shared_from_this<Peer>
 {
 	struct Piece;
-	enum State : uint8_t {
-		AmChoked = 1 << 0,			// I choked this peer (i.e. we're not giving him anymore pieces)
-		AmInterested = 1 << 1,		// I'm interested in this peer's pieces
-		PeerChoked = 1 << 2,			// Peer choked me
-		PeerInterested = 1 << 3,		// Peer interested in my stuff
+	enum State : uint8_t
+	{
+		AmChoked = 1 << 0,		 // I choked this peer (i.e. we're not giving him anymore pieces)
+		AmInterested = 1 << 1,	 // I'm interested in this peer's pieces
+		PeerChoked = 1 << 2,	 // Peer choked me
+		PeerInterested = 1 << 3, // Peer interested in my stuff
 	};
 
-	enum MessageType : uint8_t {
-		CHOKE		= 0,
-		UNCHOKE		= 1,
-		INTERESTED		= 2,
-		NOT_INTERESTED	= 3,
-		HAVE			= 4,
-		BITFIELD		= 5,
-		REQUEST		= 6,
-		PIECE_BLOCK		= 7,
-		CANCEL		= 8,
-		PORT			= 9
+	enum MessageType : uint8_t
+	{
+		CHOKE = 0,
+		UNCHOKE = 1,
+		INTERESTED = 2,
+		NOT_INTERESTED = 3,
+		HAVE = 4,
+		BITFIELD = 5,
+		REQUEST = 6,
+		PIECE_BLOCK = 7,
+		CANCEL = 8
 	};
 
 private:
 	friend class Torrent;
-	struct Block {
+	struct Block
+	{
 		size_t size;
 		uint8_t *data;
 
-		Block() { data = nullptr; size = 0; }
-		~Block() { delete []data; }
+		Block()
+		{
+			data = nullptr;
+			size = 0;
+		}
+		~Block() { delete[] data; }
 	};
 
-	struct Piece {
+	struct Piece
+	{
 		size_t index;
 		size_t currentBlocks;
 		size_t numBlocks;
 
-		~Piece() { delete []blocks; }
+		~Piece() { delete[] blocks; }
 		Block *blocks;
 	};
 
@@ -62,6 +69,11 @@ private:
 	void handleError(const std::string &);
 
 
+	void requestPiece(size_t pieceIndex);
+	inline std::vector<size_t> getPieces() const { return pieces; }
+
+	inline bool hasPiece(size_t index) { return std::find(pieces.begin(), pieces.end(), index) != pieces.end(); }
+
 public:
 	Peer(Torrent *t);
 	~Peer();
@@ -73,6 +85,4 @@ public:
 	void connect(const std::string &ip, const std::string &port);
 };
 
-
 #endif
-

@@ -71,17 +71,79 @@ void Peer::handleMessage(MessageType messageType, InputMessage in)
 	size_t payloadSize = in.getSize();
 
 	switch (messageType) {
-	case MT_Choke:
-	case MT_UnChoke:
-	case MT_Interested:
-	case MT_NotInterested:
-	case MT_Bitfield:
-	case MT_Request:
-	case MT_PieceBlock:
-	case MT_Cancel:
-	case MT_Port:
+	case CHOKE:
+		if (payloadSize != 0)
+			return handleError("invalid choke-message size");
+
+		torrent->handlePeerDebug(shared_from_this(), "choke");
+		state |= PeerChoked;
+		break;
+	case UNCHOKE:
+		if (payloadSize != 0)
+			return handleError("invalid unchoke-message size");
+
+		state &= ~PeerChoked;
+		torrent->handlePeerDebug(shared_from_this(), "unchoke");
+
+		for (Piece *piece : pieceQueue)
+		{
+			requestPiece(piece->index);
+		}
+
+		break;
+	case UNCHOKE:
+		if (payloadSize != 0)
+			return handleError("invalid unchoke-message size");
+
+		state &= ~PeerChoked;
+		torrent->handlePeerDebug(shared_from_this(), "unchoke");
+
+		for (Piece *piece : pieceQueue)
+		{
+			requestPiece(piece->index);
+		}
+
+		break;
+	case INTERESTED:
+	{
+		if (payloadSize != 0)
+			return handleError("invalid interested-message size");
+
+		torrent->handlePeerDebug(shared_from_this(), "interested");
+		state |= PeerInterested;
+
+		if (test_bit(state, AmChoked))
+		{
+			// 4-byte length, 1-byte packet type
+			static const uint8_t unchoke[5] = {0, 0, 0, 1, UNCHOKE};
+			conn->write(unchoke, sizeof(unchoke));
+			state &= ~AmChoked;
+		}
+
+		break;
+	}
+	case NOT_INTERESTED:
+	case BITFIELD:
+	case REQUEST:
+	case PIECE_BLOCK:
+	case CANCEL:
+
 	}
 
+}
+void Peer::requestPiece(size_t pieceIndex)
+{
+	if (test_bit(state, PeerChoked))
+		return handleError("Attempt to request piece from a peer that is remotely choked");
+
+	size_t begin = 0;
+	size_t length = torrent->pieceSize(pieceIndex);
+	for (; length > maxRequestSize; length -= maxRequestSize, begin += maxRequestSize)
+	{
+		sendRequest(pieceIndex, begin, maxRequestSize);
+	}
+
+	sendRequest(pieceIndex, begin, length);
 }
 
 
