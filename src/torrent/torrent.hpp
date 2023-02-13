@@ -49,24 +49,30 @@ private:
 	friend class Peer;
 	friend class Tracker;
 
-	void connectToPeers(const uint8_t *peers, size_t size);
-	TrackerQuery buildTrackerQuery(TrackerEvent event) const;
-    handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg);
 
+
+	inline const uint8_t *getPeerId() const { return peerId; }
+	inline const uint8_t *getHandshake() const { return handshake; }
+	inline size_t getTotalPieces() const { return pieces.size(); }
+	inline size_t getCompletedPieces() const { return completedPieces; }
+
+	TrackerQuery buildTrackerQuery(TrackerEvent event) const;
+	void handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error);
+	void handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg);
+	void handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &data);
 
 public:
 	enum class DownloadError
 	{
-		COMPLETED = 0,
-		TRACKER_QUERY_FAILURE = 1,
-		ALREADY_DOWNLOADED = 2,
-		NETWORK_ERROR = 3
+		COMPLETED,
+		TRACKER_QUERY_FAILURE,
+		NETWORK_ERROR
 	};
 
 	Torrent();
 	~Torrent();
 
-	bool open(const std::string &fileName, const std::string &downloadDir);
+	bool parseFile(const std::string &fileName, const std::string &downloadDir);
 	DownloadError download(uint16_t port);
 
 	inline size_t getActivePeers() const { return activePeers.size(); }
