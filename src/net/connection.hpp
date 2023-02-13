@@ -6,19 +6,17 @@
 
 #include <utils/utils.hpp>
 
-#include <mutex>
 #include <list>
 #include "outgoingmessage.hpp"
 
 namespace asio = boost::asio;
-class Connection
+class Connection // https://stackoverflow.com/a/2795371/18301773
 {
 typedef std::function<void(const uint8_t *readCB, size_t size)> ReadCallback;
 typedef std::function<void()> ConnectCallback;
 typedef std::function<void(const std::string &errorCB)> ErrorCallback;
 
 private:
-	asio::deadline_timer delayedWriteTimer; // rename?
 	asio::ip::tcp::resolver resolver;
 	asio::ip::tcp::socket socket;
 
@@ -26,14 +24,8 @@ private:
 	ConnectCallback connCB;
 	ErrorCallback errorCB;
 
-	std::shared_ptr<asio::streambuf> outputStream;
 	asio::streambuf inputStream;
 
-	void internalWrite(const boost::system::error_code &e);
-	void handleRead(const boost::system::error_code &e, size_t);
-	void handleWrite(const boost::system::error_code &e, size_t, std::shared_ptr<asio::streambuf> outputStream);
-	void handleConnect(const boost::system::error_code &e);
-	void handleResolve(const boost::system::error_code &e, asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint);
 	void handleError(const boost::system::error_code &e);
 
 public:

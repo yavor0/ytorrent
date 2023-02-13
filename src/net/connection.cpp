@@ -1,10 +1,8 @@
 #include "connection.hpp"
 
 asio::io_service g_service;
-static std::mutex connectionLock;
-static std::list<std::shared_ptr<asio::streambuf>> outputStreams;
 
-Connection::Connection() : delayedWriteTimer(g_service),
+Connection::Connection() :
 						   resolver(g_service),
 						   socket(g_service)
 {
@@ -28,7 +26,28 @@ void Connection::connect(const std::string &host, const std::string &port, const
 	this->connCB = cb;
 	this->resolver.async_resolve(
 		query,
-		std::bind(&Connection::handleResolve, this, std::placeholders::_1, std::placeholders::_2));
+		// Resolve handler
+		[this](const boost::system::error_code &e, asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
+		{
+			if (e)
+			{
+				return handleError(e);
+			}
+
+			// Connect handler
+			this->socket.async_connect(*endpoint,
+									   [this](const boost::system::error_code &e)
+									   {
+										   if (e)
+										   {
+											   return handleError(e);
+										   }
+										   else if (this->connCB)
+										   {
+											   this->connCB();
+										   }
+									   });
+		});
 }
 
 void Connection::close(bool warn)
@@ -52,36 +71,6 @@ void Connection::close(bool warn)
 	this->socket.close();
 }
 
-void Connection::write(const uint8_t *bytes, size_t size)
-{
-	if (!isConnected())
-		return;
-
-	if (!this->outputStream)
-	{
-		connectionLock.lock();
-		if (!outputStreams.empty())
-		{
-			this->outputStream = outputStreams.front();
-			outputStreams.pop_front();
-		}
-		else
-		{
-			this->outputStream = std::shared_ptr<asio::streambuf>(new asio::streambuf);
-		}
-
-		connectionLock.unlock();
-
-		this->delayedWriteTimer.cancel();
-		this->delayedWriteTimer.expires_from_now(boost::posix_time::milliseconds(10));
-		this->delayedWriteTimer.async_wait(std::bind(&Connection::internalWrite, this, std::placeholders::_1));
-	}
-
-	std::ostream os(this->outputStream.get());
-	os.write((const char *)bytes, size);
-	os.flush();
-}
-
 void Connection::read(size_t bytes, const ReadCallback &rc)
 {
 	if (!isConnected())
@@ -92,79 +81,42 @@ void Connection::read(size_t bytes, const ReadCallback &rc)
 	this->readCB = rc;
 	asio::async_read(
 		this->socket, asio::buffer(this->inputStream.prepare(bytes)),
-		std::bind(&Connection::handleRead, this, std::placeholders::_1, std::placeholders::_2));
+		// Read handler
+		[this](const boost::system::error_code &e, size_t readSize)
+		{
+			if (e)
+			{
+				return handleError(e);
+			}
+
+			if (this->readCB)
+			{
+				const uint8_t *data = asio::buffer_cast<const uint8_t *>(this->inputStream.data());
+				this->readCB(data, readSize);
+			}
+
+			this->inputStream.consume(readSize);
+		});
 }
 
-void Connection::internalWrite(const boost::system::error_code &e)
+void Connection::write(const uint8_t *data, size_t bytes)
 {
-	if (e == asio::error::operation_aborted)
-	{
+	if (!isConnected())
 		return;
-	}
-
-	std::shared_ptr<asio::streambuf> outputStream = this->outputStream;
-	this->outputStream = nullptr;
-
 	asio::async_write(
-		this->socket, *outputStream,
-		std::bind(&Connection::handleWrite, this, std::placeholders::_1, std::placeholders::_2, outputStream));
+		this->socket,
+		asio::buffer(data, bytes),
+		[this](const boost::system::error_code &error, std::size_t bytesTransferred)
+		{
+			if (error == asio::error::operation_aborted)
+				return;
+			if (error)
+			{
+				handleError(error);
+			}
+		});
 }
 
-void Connection::handleWrite(const boost::system::error_code &e, size_t bytes, std::shared_ptr<asio::streambuf> outputStream)
-{
-	this->delayedWriteTimer.cancel();
-	if (e == asio::error::operation_aborted)
-	{
-		return;
-	}
-
-	outputStream->consume(outputStream->size());
-	outputStreams.push_back(outputStream);
-	if (e)
-	{
-		handleError(e);
-	}
-}
-
-void Connection::handleRead(const boost::system::error_code &e, size_t readSize)
-{
-	if (e)
-	{
-		return handleError(e);
-	}
-
-	if (this->readCB)
-	{
-		const uint8_t *data = asio::buffer_cast<const uint8_t *>(this->inputStream.data());
-		this->readCB(data, readSize);
-	}
-
-	this->inputStream.consume(readSize);
-}
-
-void Connection::handleResolve(
-	const boost::system::error_code &e,
-	asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
-{
-	if (e)
-	{
-		return handleError(e);
-	}
-
-	this->socket.async_connect(*endpoint, std::bind(&Connection::handleConnect, this, std::placeholders::_1));
-}
-
-void Connection::handleConnect(const boost::system::error_code &e)
-{
-	if (e)
-	{
-		return handleError(e);
-	}
-	else if (this->connCB)
-	{
-		this->connCB();
-	}
-}
 
 void Connection::handleError(const boost::system::error_code &error)
 {
