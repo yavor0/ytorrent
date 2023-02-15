@@ -32,7 +32,8 @@ public:
 	Connection();
 	~Connection();
 
-	static void poll();
+	static void start();
+	static void stop();
 
 	void connect(const std::string &host, const std::string &port, const ConnectCallback &connCB);
 	void close(bool warn = true); // Pass false in ErrorCallback otherwise possible infinite recursion
@@ -47,6 +48,7 @@ public:
 
 	void setErrorCallback(const ErrorCallback &errorCB) { this->errorCB = errorCB; }
 };
-extern asio::io_service g_service;
+extern asio::io_context g_io_context;
+extern boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard;
 
 #endif

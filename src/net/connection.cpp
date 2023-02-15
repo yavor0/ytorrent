@@ -1,10 +1,10 @@
 #include "connection.hpp"
 
-asio::io_service g_service;
+asio::io_context g_io_context;
+boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard(g_io_context.get_executor());
 
-Connection::Connection() :
-						   resolver(g_service),
-						   socket(g_service)
+Connection::Connection() : resolver(g_io_context),
+						   socket(g_io_context)
 {
 }
 
@@ -13,10 +13,14 @@ Connection::~Connection()
 	close(false);
 }
 
-void Connection::poll()
+void Connection::start()
 {
-	g_service.reset();
-	g_service.poll();
+	g_io_context.run();
+}
+
+void Connection::stop()
+{
+	work_guard.reset(); // Work guard is destroyed, io_context::run is free to return
 }
 
 void Connection::connect(const std::string &host, const std::string &port, const ConnectCallback &cb)
@@ -33,20 +37,20 @@ void Connection::connect(const std::string &host, const std::string &port, const
 			{
 				return handleError(e);
 			}
-
 			// Connect handler
-			this->socket.async_connect(*endpoint,
-									   [this](const boost::system::error_code &e)
-									   {
-										   if (e)
-										   {
-											   return handleError(e);
-										   }
-										   else if (this->connCB)
-										   {
-											   this->connCB();
-										   }
-									   });
+			this->socket.async_connect(
+				*endpoint,
+				[this](const boost::system::error_code &e)
+				{
+					if (e)
+					{
+						return handleError(e);
+					}
+					else if (this->connCB)
+					{
+						this->connCB();
+					}
+				});
 		});
 }
 
@@ -116,7 +120,6 @@ void Connection::write(const uint8_t *data, size_t bytes)
 			}
 		});
 }
-
 
 void Connection::handleError(const boost::system::error_code &error)
 {
