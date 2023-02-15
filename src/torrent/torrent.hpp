@@ -49,8 +49,12 @@ private:
 	friend class Peer;
 	friend class Tracker;
 
+	bool validateTracker(const std::string &url, const TrackerQuery &r, uint16_t myPort);
+	void connectToPeers(const uint8_t *peers, size_t size);
 
-
+	void addPeer(const std::shared_ptr<Peer> &peer);
+	void removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg);
+	void disconnectPeers();
 	inline const uint8_t *getPeerId() const { return peerId; }
 	inline const uint8_t *getHandshake() const { return handshake; }
 	inline size_t getTotalPieces() const { return pieces.size(); }
