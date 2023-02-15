@@ -68,8 +68,11 @@ private:
 	void handleMessage(MessageType mType, IncomingMessage in);
 	void handleError(const std::string &);
 
+	void sendInterested();
+	void sendHave(uint32_t index);
+	void sendCancelRequest(Piece *p);
+	void sendCancel(uint32_t index, uint32_t begin, uint32_t size);
 
-	void requestPiece(size_t pieceIndex);
 	inline std::vector<size_t> getPieces() const { return pieces; }
 
 	inline bool hasPiece(size_t index) { return std::find(pieces.begin(), pieces.end(), index) != pieces.end(); }
