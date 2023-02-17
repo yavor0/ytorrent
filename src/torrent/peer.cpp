@@ -137,6 +137,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 		if (!hasPiece(p))
 		{
 			pieces.push_back(p);
+			// torrent->requestPiece(shared_from_this()); // ?????????
 		}
 
 		break;
@@ -198,8 +199,30 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 		if (blockIndex >= piece->numBlocks)
 			return handleError("received too big block index");
 
+		if (torrent->pieceDone(index))
+		{
+			torrent->handlePeerDebug(shared_from_this(), "cancelling " + std::to_string(index));
+			sendCancelRequest(piece);
+			pieceQueue.erase(it);
+			delete piece;
+		}
+		else
+		{
+			piece->blocks[blockIndex].size = payloadSize;
+			piece->blocks[blockIndex].data = in.getBuffer(payloadSize);
 
-
+			if (++piece->currentBlocks == piece->numBlocks)
+			{
+				std::vector<uint8_t> pieceData;
+				pieceData.reserve(piece->numBlocks * maxRequestSize); // just a prediction could be bit less
+				for (size_t x = 0; x < piece->numBlocks; ++x)
+				{
+					for (size_t y = 0; y < piece->blocks[x].size; ++y)
+					{
+						pieceData.push_back(piece->blocks[x].data[y]);
+					}
+				}
+			}
 		}
 		break;
 	}
@@ -240,6 +263,25 @@ void Peer::sendHave(uint32_t index)
 	conn->write(out);
 }
 
+void Peer::sendPieceRequest(uint32_t index)
+{
+	sendInterested();
+
+	uint32_t pieceLength = torrent->pieceSize(index);
+	size_t numBlocks = (int)(ceil(double(pieceLength) / maxRequestSize));
+
+	Piece *piece = new Piece();
+	piece->index = index;
+	piece->currentBlocks = 0;
+	piece->numBlocks = numBlocks;
+	piece->blocks = new Block[numBlocks];
+
+	pieceQueue.push_back(piece);
+	if (!test_bit(state, PeerChoked))
+	{
+		requestPiece(index);
+	}
+}
 
 void Peer::sendRequest(uint32_t index, uint32_t begin, uint32_t length)
 {
@@ -285,3 +327,17 @@ void Peer::sendCancel(uint32_t index, uint32_t begin, uint32_t length)
 	conn->write(out);
 }
 
+void Peer::requestPiece(size_t pieceIndex)
+{
+	if (test_bit(state, PeerChoked))
+		return handleError("Attempt to request piece from a peer that is remotely choked");
+
+	size_t begin = 0;
+	size_t length = torrent->pieceSize(pieceIndex);
+	for (; length > maxRequestSize; length -= maxRequestSize, begin += maxRequestSize) // rewrite with a while for clarity
+	{
+		sendRequest(pieceIndex, begin, maxRequestSize);
+	}
+
+	sendRequest(pieceIndex, begin, length);
+}
