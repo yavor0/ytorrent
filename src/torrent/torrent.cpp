@@ -123,6 +123,24 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 	return true;
 }
 
+bool Torrent::checkPieceHash(const uint8_t *data, size_t size, uint32_t index)
+{
+	if (index >= pieces.size())
+		return false;
+
+	uint8_t pieceHash[20];
+	boost::uuids::detail::sha1 sha1;
+	sha1.process_bytes(data, size);
+
+	unsigned int sum[5];
+	sha1.get_digest(sum);
+	for (int i = 0; i < 5; ++i)
+	{
+		writeAsBE32(&pieceHash[i * 4], sum[i]);
+	}
+
+	return memcmp(pieceHash, pieces[index].hash, 20) == 0;
+}
 
 TrackerQuery Torrent::buildTrackerQuery(TrackerEvent event) const // MOVE THIS FUNCTION TO TRACKER CLASS
 {
@@ -288,3 +306,16 @@ void Torrent::handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::stri
 	std::clog << name << ": " << peer->getStrIp() << " " << msg << std::endl;
 }
 
+
+int64_t Torrent::pieceSize(size_t pieceIndex) const
+{
+	// Last piece can be different in size
+	if (pieceIndex == pieces.size() - 1)
+	{
+		int64_t r = totalSize % pieceLength;
+		if (r != 0)
+			return r;
+	}
+
+	return pieceLength;
+}

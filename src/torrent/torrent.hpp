@@ -49,8 +49,13 @@ private:
 	friend class Peer;
 	friend class Tracker;
 
+	bool checkPieceHash(const uint8_t *data, size_t size, uint32_t index);
 	bool validateTracker(const std::string &url, const TrackerQuery &r, uint16_t myPort);
 	void connectToPeers(const uint8_t *peers, size_t size);
+	void requestPiece(const std::shared_ptr<Peer> &peer, size_t pieceIndex);
+	void requestPiece(const std::shared_ptr<Peer> &peer);
+	int64_t pieceSize(size_t pieceIndex) const;
+	inline bool pieceDone(size_t pieceIndex) const { return pieces[pieceIndex].done; }
 
 	void addPeer(const std::shared_ptr<Peer> &peer);
 	void removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg);
@@ -63,7 +68,6 @@ private:
 	TrackerQuery buildTrackerQuery(TrackerEvent event) const;
 	void handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error);
 	void handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg);
-	void handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &data);
 
 public:
 	enum class DownloadError
