@@ -306,6 +306,53 @@ void Torrent::handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::stri
 	std::clog << name << ": " << peer->getStrIp() << " " << msg << std::endl;
 }
 
+void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &pieceData)
+{
+	if (!checkPieceHash(&pieceData[0], pieceData.size(), index))
+	{
+		std::cerr << name << ": " << peer->getStrIp() << " checksum mismatch for piece " << index << "." << std::endl;
+		++hashMisses;
+		wastedBytes += pieceData.size();
+		return;
+	}
+
+	pieces[index].done = true;
+	downloadedBytes += pieceData.size();
+	++completedPieces;
+
+	int64_t beginPos = index * pieceLength;
+	const uint8_t *data = &pieceData[0];
+	size_t off = 0;
+	size_t size = pieceData.size();
+	for (const File &file : files)
+	{
+		int64_t fileEnd = file.begin + file.length;
+		if (beginPos < file.begin || beginPos >= fileEnd)
+			break;
+
+		int64_t amount = fileEnd - beginPos;
+		if (amount > size)
+		{
+			amount = size;
+		}
+
+		fseek(file.fp, beginPos - file.begin, SEEK_SET);
+		size_t wrote = fwrite(data + off, 1, amount, file.fp);
+		off += wrote;
+		size -= wrote;
+		beginPos += wrote;
+	}
+
+	for (const std::shared_ptr<Peer> &peer : activePeers)
+	{
+		peer->sendHave(index);
+	}
+
+	std::clog << name << ": " << peer->getStrIp() << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
+			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", "
+			  << "Hash miss: " << hashMisses << ")"
+			  << std::endl;
+}
 
 int64_t Torrent::pieceSize(size_t pieceIndex) const
 {

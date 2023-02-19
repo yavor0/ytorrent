@@ -68,6 +68,7 @@ private:
 	TrackerQuery buildTrackerQuery(TrackerEvent event) const;
 	void handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error);
 	void handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg);
+	void handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &data);
 
 public:
 	enum class DownloadError

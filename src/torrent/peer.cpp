@@ -222,6 +222,15 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 						pieceData.push_back(piece->blocks[x].data[y]);
 					}
 				}
+
+				torrent->handlePieceCompleted(shared_from_this(), index, pieceData);
+				pieceQueue.erase(it);
+				delete piece;
+
+				if (torrent->getCompletedPieces() != torrent->getTotalPieces())
+				{
+					torrent->requestPiece(shared_from_this());
+				}
 			}
 		}
 		break;
