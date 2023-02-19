@@ -1,57 +1,54 @@
-#ifndef OUTPUTMESSAGE_H
-#define OUTPUTMESSAGE_H
+#ifndef OUTGOING_MESSAGE_H
+#define OUTGOING_MESSAGE_H
 
 #include <utils/transcoder.hpp>
 #include <vector>
-#include <string>
 
-class OutputMessage
+class OutgoingMessage
 {
-public:
-	OutputMessage(size_t fixedSize = 0);
-	~OutputMessage();
-
-	void clear() { m_buffer.clear(); m_pos = 0; }
-	void addByte(uint8_t byte);
-	void addBytes(const uint8_t *bytes, size_t size);
-	void addU16(uint16_t val);
-	void addU32(uint32_t val);
-	void addU64(uint64_t val);
-	void addString(const std::string &str);
-
-	const uint8_t *data() const { return &m_buffer[m_pos]; }
-	const uint8_t *data(size_t p) const { return &m_buffer[p]; }
-	size_t size() const { return m_pos; }
-
-	inline OutputMessage &operator<<(const uint8_t &b)
-	{
-		addByte(b);
-		return *this;
-	}
-	inline OutputMessage &operator<<(const uint16_t &u)
-	{
-		addU16(u);
-		return *this;
-	}
-	inline OutputMessage &operator<<(const uint32_t &u)
-	{
-		addU32(u);
-		return *this;
-	}
-	inline OutputMessage &operator<<(const uint64_t &u)
-	{
-		addU64(u);
-		return *this;
-	}
-	inline OutputMessage &operator<<(const std::string &s)
-	{
-		addString(s);
-		return *this;
-	}
-
 private:
-	std::vector<uint8_t> m_buffer;
-	size_t m_pos;
+	std::vector<uint8_t> dataBuffer;
+	size_t writeIndex;
+
+public:
+	OutgoingMessage(size_t fixedSize = 0) : writeIndex(0)
+	{
+		if (fixedSize != 0)
+			dataBuffer.reserve(fixedSize);
+	}
+
+	~OutgoingMessage()
+	{
+	}
+
+	void clear()
+	{
+		dataBuffer.clear();
+		writeIndex = 0;
+	}
+	void addByte(uint8_t byte)
+	{
+		dataBuffer[writeIndex++] = byte;
+	}
+	void addU16(uint16_t val)
+	{
+		writeAsBE16(&dataBuffer[writeIndex], val);
+		writeIndex += 2;
+	}
+	void addU32(uint32_t val)
+	{
+		writeAsBE32(&dataBuffer[writeIndex], val);
+		writeIndex += 4;
+	}
+	void addU64(uint64_t val)
+	{
+		writeAsBE64(&dataBuffer[writeIndex], val);
+		writeIndex += 8;
+	}
+
+	const uint8_t *data() const { return &dataBuffer[writeIndex]; }
+	const uint8_t *data(size_t p) const { return &dataBuffer[p]; }
+	size_t size() const { return writeIndex; }
 };
 
 #endif

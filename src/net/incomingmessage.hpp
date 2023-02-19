@@ -1,63 +1,87 @@
-#ifndef INPUTMESSAGE_H
-#define INPUTMESSAGE_H
+#ifndef INCOMING_MESSAGE_H
+#define INCOMING_MESSAGE_H
 
 #include <utils/transcoder.hpp>
 #include <string>
+#include <memory>
+#include <cstring>
 
-class InputMessage
+class IncomingMessage
 {
-public:
-	InputMessage(uint8_t *data, size_t size);
-	InputMessage();
-	~InputMessage();
-
-	void setData(uint8_t *d) { m_data = d; }
-	size_t getSize() { return m_size; }
-	void setSize(size_t size) { m_size = size; }
-
-	uint8_t *getBuffer(size_t size);
-	uint8_t *getBuffer(void);
-	uint8_t getByte();
-	uint16_t getU16();
-	uint32_t getU32();
-	uint64_t getU64();
-	std::string getString();
-
-	inline InputMessage &operator=(uint8_t *data)
-	{
-		m_data = data;
-		return *this;
-	}
-	inline InputMessage &operator>>(uint8_t &b)
-	{
-		b = getByte();
-		return *this;
-	}
-	inline InputMessage &operator>>(uint16_t &u)
-	{
-		u = getU16();
-		return *this;
-	}
-	inline InputMessage &operator>>(uint32_t &u)
-	{
-		u = getU32();
-		return *this;
-	}
-	inline InputMessage &operator>>(uint64_t &u)
-	{
-		u = getU64();
-		return *this;
-	}
-	inline InputMessage &operator>>(std::string &s)
-	{
-		s = getString();
-		return *this;
-	}
-
 private:
-	uint8_t *m_data;
-	size_t m_size;
-	uint32_t m_pos;
+	uint8_t *dataBuffer;
+	size_t buffSize;
+	uint32_t readIndex;
+
+public:
+	IncomingMessage(uint8_t *data, size_t size) : dataBuffer(data),
+												  buffSize(size),
+												  readIndex(0)
+	{
+	}
+	IncomingMessage() : dataBuffer(nullptr),
+						buffSize(0),
+						readIndex(0)
+	{
+	}
+	~IncomingMessage()
+	{
+	}
+
+	void setData(uint8_t *d) { dataBuffer = d; }
+	size_t getSize() { return buffSize; }
+	void setSize(size_t size) { buffSize = size; }
+
+	uint8_t *getBuffer(size_t size)
+	{
+		if (readIndex + size > buffSize)
+			return nullptr;
+
+		uint8_t *buffer = new uint8_t[size];
+		memcpy(buffer, &dataBuffer[readIndex], size);
+		return buffer;
+	}
+
+	uint8_t *getBuffer()
+	{
+		return &dataBuffer[readIndex];
+	}
+
+	uint8_t extractNextByte()
+	{
+		return dataBuffer[readIndex++];
+	}
+	uint16_t extractNextU16()
+	{
+		uint16_t tmp = readAsBE16(&dataBuffer[readIndex]);
+		readIndex += 2;
+		return tmp;
+	}
+
+	uint32_t extractNextU32()
+	{
+		uint32_t tmp = readAsBE32(&dataBuffer[readIndex]);
+		readIndex += 4;
+		return tmp;
+	}
+	uint64_t extractNextU64()
+	{
+		uint64_t tmp = readAsBE64(&dataBuffer[readIndex]);
+		readIndex += 8;
+		return tmp;
+	}
+	std::string extractNextString() // never used
+	{
+		uint16_t len = extractNextU16();
+		if (!len)
+			return std::string();
+
+		if (readIndex + len > buffSize)
+			return std::string();
+
+		std::string ret((char *)&dataBuffer[readIndex], len);
+		readIndex += len;
+		return ret;
+	}
 };
 #endif
-
