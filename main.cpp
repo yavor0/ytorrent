@@ -1,65 +1,37 @@
-#include <fstream>
+#include <torrent/torrent.hpp>
+#include <net/connection.hpp>
+#include <utils/utils.hpp>
+
+#include <thread>
+#include <functional>
 #include <iostream>
-#include <memory>
-#include <string>
 
-#include "Utils.hpp"
-#include "TorrentMeta.hpp"
-#include "Torrent.hpp"
-// #include "bencoding/bencoding.h"
+#include <boost/program_options.hpp>
+#include <stdlib.h>
 
-using namespace std;
+int main(int argc, char *argv[])
+{
+	int startport = 6881;
+	std::string dldir = "Torrents";
+	std::string file(argv[1]);
+	Torrent *t = new Torrent();
+	int completed = 0;
 
-int main(int argc, char **argv) {
-	TorrentMeta tm;
-	string filename(argv[1]);
-	tm.parseFile(filename);
-	tm.printAll();
+	if (!t->parseFile(file, dldir))
+	{
+		std::clog << file << ": corrupted torrent file" << std::endl;
+		return 0;
+	}
+	std::clog << t->getName() << ": Total size: " << bytesToHumanReadable(t->getTotalSize(), true) << std::endl;
 
-	
-	Torrent tr(tm);
-	tr.trackerQuery();
+	std::thread runnerThread = std::thread([](){Connection::start();});
+	runnerThread.detach(); // !!!! https://stackoverflow.com/a/7989043/18301773 !!!!
 
+	Torrent::DownloadError error = t->download(startport++);
+	std::clog << t->getName() << ": Downloaded: " << bytesToHumanReadable(t->getDownloadedBytes(), true) << std::endl;
+	std::clog << t->getName() << ": Uploaded:   " << bytesToHumanReadable(t->getUploadedBytes(), true) << std::endl;
+	Connection::stop();
+	// delete t; // ?????
 	return 0;
 }
 
-
-
-
-
-
-/*
-	// Decoding.
-	shared_ptr<BItem> decodedData;
-	try {
-		if (argc > 1) {
-			ifstream input(argv[1]);
-			decodedData = decode(input);
-		} 
-	} catch (const DecodingError &ex) {
-		cerr << "error: " << ex.what() << "\n";
-		return 1;
-	}
-
-    auto data = decodedData->as<BDictionary>();
-    // PrettyPrinter
-    // auto key = shared_ptr<BString>(BString::create("announce_list"));
-    // for (auto i: *data){
-    //     cout << i.first->value() << endl;
-    // }
-
-    // cout << (*data)[BString::create("announce")]->;
-
-*/
-
-
-/*
-    auto data = decodedData->as<BDictionary>();
-	shared_ptr<BItem>& res = (*data)[BString::create("announce")];
-	BItem& itemRef = *res;
-	shared_ptr<BString> rStr = itemRef.as<BString>();
-	
-	cout << string(rStr->value()) << endl;
-	cout << rStr.use_count() << endl;
-
-*/
