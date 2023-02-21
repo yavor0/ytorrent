@@ -2,12 +2,10 @@
 #include "torrent.hpp"
 #include <random>
 
-Tracker::Tracker(Torrent *torrent, const std::string &host, const std::string &port, const std::string &protocol, uint16_t tport)
+Tracker::Tracker(Torrent *torrent, uint16_t myPort, UrlMeta urlMeta)
 	: torrent(torrent),
-	  rawPort(tport),
-	  host(host),
-	  strPort(port),
-	  protocol(protocol)
+	  myPort(myPort),
+	  urlMeta(urlMeta)
 {
 }
 
@@ -18,8 +16,8 @@ bool Tracker::query(const TrackerQuery &query) // future abstraction for wheneve
 
 bool Tracker::httpRequest(const TrackerQuery &r)
 {
-	asio::ip::tcp::resolver resolver(g_service);
-	asio::ip::tcp::resolver::query query(host, strPort);
+	asio::ip::tcp::resolver resolver(g_io_context);
+	asio::ip::tcp::resolver::query query(urlMeta.host, urlMeta.port);
 	boost::system::error_code error;
 
 	asio::ip::tcp::resolver::iterator endpoint = resolver.resolve(query, error);
@@ -30,7 +28,7 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 		return false;
 	}
 
-	asio::ip::tcp::socket socket(g_service);
+	asio::ip::tcp::socket socket(g_io_context);
 	do
 	{
 		socket.close();
@@ -68,16 +66,19 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 	std::ostream buf(&params);
 
 	buf << "GET "
-		<< "/announce?"
+		<< urlMeta.announcePath << "?"
 		<< event
 		<< "info_hash=" << urlEncode(std::string(infoHash, 20))
 		<< "&peer_id=" << urlEncode(std::string((const char *)torrent->getPeerId(), 20)) // huh??? remove necessity for urlencode
-		<< "&port=" << rawPort
+		<< "&port=" << myPort
 		<< "&uploaded=" << r.uploaded
 		<< "&downloaded=" << r.downloaded
 		<< "&left=" << r.remaining
 		<< "&compact=1"
+		<< urlMeta.passKeyParam
 		<< " HTTP/1.0\r\n"
+		<< "Host: " << urlMeta.host 
+		<< "\r\n"
 		<< "User-Agent: YtoRRenT"
 		<< "\r\n"
 		<< "Connection: close"
@@ -153,7 +154,6 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 	if (r.event == TrackerEvent::NONE || r.event == TrackerEvent::STARTED)
 	{
 		torrent->connectToPeers((const uint8_t *)peersInfo.c_str(), peersInfo.length());
-		;
 	}
 
 	return true;
