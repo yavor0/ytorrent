@@ -20,7 +20,7 @@ void Connection::start()
 
 void Connection::stop()
 {
-	work_guard.reset(); // Work guard is destroyed, io_context::run is free to return
+	g_io_context.stop(); // Work guard is destroyed, io_context::run is free to return
 }
 
 void Connection::connect(const std::string &host, const std::string &port, const ConnectCallback &cb)
