@@ -227,6 +227,8 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 				pieceQueue.erase(it);
 				delete piece;
 
+				// We have to do this here, if we do it inside of handlePieceCompleted
+				// pieceQueue will fail us due to sendPieceRequest changing position
 				if (torrent->getCompletedPieces() != torrent->getTotalPieces())
 				{
 					torrent->requestPiece(shared_from_this());
