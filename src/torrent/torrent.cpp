@@ -20,13 +20,25 @@ Torrent::Torrent() : completedPieces(0),
 
 Torrent::~Torrent()
 {
-	for (const auto &f : files)
+	for (auto &f : files)
 	{
 		if (f.fp != nullptr)
 		{
 			fclose(f.fp);
+			f.fp=nullptr;
 		}
 	}
+
+	// std::cout << "\n\n\n\n\n\n-----USE COUNT-----\n\n\n\n\n\n" << std::endl;
+	// for(auto peer:activePeers)
+	// {
+	// 	std::cout << "Use count: " << peer.use_count() << std::endl;
+	// }
+	// std::cout << "\n\n\n\n\n\n\n\n\n\n\n\n" << std::endl;
+	// activePeers.clear();
+	// std::cout << activePeers.size() << std::endl;
+	// std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+	// std::cout << "\n\n\n\n\nHERE\n\n\n\n\n" << std::endl;
 }
 
 bool Torrent::parseFile(const std::string &fileName, const std::string &downloadDir)
@@ -176,25 +188,28 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 		if (mainTracker->isNextRequestDue())
 		{
 			mainTracker->query(buildTrackerQuery(TrackerEvent::NONE));
-			std::cout << "\n---------------Queried again--------------" << std::endl;
-			std::cout << "Current active peers:" << activePeers.size() << std::endl
-					  << std::endl;
+			// std::cout << "\n---------------Queried again--------------" << std::endl;
+			// std::cout << "Current active peers:" << activePeers.size() << std::endl
+			// 		  << std::endl;
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
 	for (auto &f : files)
 	{
-		// https://stackoverflow.com/a/17941712/18301773
-		fclose(f.fp);
-		f.fp = nullptr;
+	 	// https://stackoverflow.com/a/17941712/18301773
+		if (f.fp != nullptr)
+		{
+			fclose(f.fp);
+			f.fp=nullptr;
+		}
 	}
 
 	TrackerEvent event;
 	event = (completedPieces == piecesNeeded) ? TrackerEvent::COMPLETED : TrackerEvent::STOPPED;
 
 	mainTracker->query(buildTrackerQuery(event));
-
+	// disconnectPeers();
 	return event == TrackerEvent::COMPLETED ? DownloadError::COMPLETED : DownloadError::NETWORK_ERROR;
 }
 
@@ -207,7 +222,7 @@ bool Torrent::validateTracker(const std::string &furl, const TrackerQuery &q, ui
 		return false;
 	}
 
-	std::shared_ptr<Tracker> tracker(new Tracker(this, myPort, urlMeta)); // use make_shared<>
+	std::shared_ptr<Tracker> tracker = std::make_shared<Tracker>(this, myPort, urlMeta); // use make_shared<>
 	if (!tracker->query(q))
 	{
 		return false;
@@ -224,12 +239,21 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 	{
 		const uint8_t *iport = peers + i;
 		uint32_t ip = readAsLE32(iport);
-		// std::cout << "ENDIANESS:" << isLittleEndian() << std::endl;
-		auto it = std::find_if(activePeers.begin(), activePeers.end(),
-							   [ip](const std::shared_ptr<Peer> &peer)
-							   { return peer->getRawIp() == ip; });
-		if (it != activePeers.end())
+		
+		// race condition?
+		bool exists = false;
+		for(size_t i=0;i<activePeers.size();i++)
+		{
+			if(activePeers[i]->getRawIp() == ip)
+			{
+				exists=true;
+				break;
+			}
+		}
+		if (exists)
+		{
 			continue;
+		}
 
 		// Asynchronously connect to that peer, and do not add it to our
 		// active peers list unless a connection was established successfully.
@@ -240,6 +264,7 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
 {
+	
 	activePeers.push_back(peer);
 	std::clog << name << ": Peers: " << activePeers.size() << std::endl;
 }
@@ -258,10 +283,26 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 
 void Torrent::disconnectPeers()
 {
-	for (const std::shared_ptr<Peer> &peer : activePeers)
+	// The elements of activePeers are edited asynchronously, there are race conditions
+	// instead of using iterators which become invalid, manual indexing is used here
+	for(size_t i =0; i<this->activePeers.size();i++)
 	{
-		peer->disconnect();
+		activePeers[i]->disconnect();
 	}
+
+	// for (const std::shared_ptr<Peer> &peer : activePeers)
+	// {
+	// 	peer->disconnect();
+	// }
+
+	// auto begin = activePeers.begin();
+	// auto end = activePeers.end();
+	// for(;begin!=end;++begin)
+	// {
+	// 	const auto &peer = *begin;
+	// 	peer->disconnect();
+	// }
+	
 }
 
 void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)

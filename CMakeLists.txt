@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(ytorrent)
-add_compile_options(-Wall -Wextra -Wpedantic -march=native -Wconversion -Wshadow -fsanitize=address -ftrapv -O0 -g3)
-add_link_options(-fsanitize=address)
+add_compile_options(-Wall -Wextra -Wpedantic -march=native -Wconversion -Wshadow -ftrapv -O0 -g3)
+# add_link_options(-fsanitize=address)
 
 add_executable(${PROJECT_NAME}
     src/torrent/peer.cpp
@@ -12,7 +12,7 @@ add_executable(${PROJECT_NAME}
     main.cpp
 )
 
-set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_BUILD_TYPE Debug)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 # target_include_directories(${PROJECT_NAME} PUBLIC "/home/yavor/ytorrent/dependencies/boost_1_71_0")

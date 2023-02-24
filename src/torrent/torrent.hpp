@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <mutex>
 
 static int64_t maxRequestSize = 16384; // 16KiB initial (per piece)
 class Torrent
@@ -71,6 +72,7 @@ private:
 	void handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &data);
 
 public:
+	// std::mutex removeLock;
 	enum class DownloadError
 	{
 		COMPLETED,

@@ -22,7 +22,10 @@ Peer::~Peer()
 
 void Peer::disconnect()
 {
+	std::cout << "TEST PEER DISCONNECT" << std::endl;
+	std::cout << "BEFORE: " << (void*)torrent << std::endl;
 	torrent->removePeer(shared_from_this(), "disconnect called");
+	std::cout << "AFTER: " << (void*)torrent << std::endl;
 	conn->close(false);
 }
 
@@ -30,23 +33,23 @@ void Peer::connect(const std::string &ip, const std::string &port)
 {
 	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
 	conn->connect(ip, port,
-				  [this]()
+				  [me=shared_from_this()]()
 				  {
-					  const uint8_t *myHandshake = torrent->getHandshake();
-					  conn->write(myHandshake, 68);
-					  conn->read(68,
-								 [this, myHandshake](const uint8_t *peerHandshake, size_t size)
+					  const uint8_t *myHandshake = (me->torrent)->getHandshake();
+					  (me->conn)->write(myHandshake, 68);
+					  (me->conn)->read(68,
+								 [me, myHandshake](const uint8_t *peerHandshake, size_t size)
 								 {
 									 if (size != 68 || (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&peerHandshake[28], &myHandshake[28], 20) != 0)
-										 return handleError("info hash/protocol type mismatch");
+										 return me->handleError("info hash/protocol type mismatch");
 
 									 std::string peerId((const char *)&peerHandshake[48], 20);
 									 if (!peerId.empty() && peerId != peerId)
-										 return handleError("unverified");
+										 return me->handleError("unverified");
 
 									 peerId = peerId;
-									 torrent->addPeer(shared_from_this());
-									 conn->read(4, std::bind(&Peer::handle, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+									 (me->torrent)->addPeer(me->shared_from_this());
+									 (me->conn)->read(4, std::bind(&Peer::handle, me->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 								 });
 				  });
 }
@@ -59,14 +62,14 @@ void Peer::handle(const uint8_t *data, size_t size)
 	uint32_t length = readAsBE32(data);
 	switch (length)
 	{
-	case 0: // Keep alive UNNECESSARY?
+	case 0:
 		return conn->read(4, std::bind(&Peer::handle, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 	default:
 		conn->read(length,
-				   [this](const uint8_t *data, size_t size)
+				   [me=shared_from_this()](const uint8_t *data, size_t size)
 				   {
 					   IncomingMessage in(const_cast<uint8_t *>(&data[1]), size - 1);
-					   handleMessage((MessageType)data[0], in);
+					   me->handleMessage((MessageType)data[0], in);
 				   });
 	}
 }
