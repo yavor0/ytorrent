@@ -32,24 +32,24 @@ void Connection::connect(const std::string &host, const std::string &port, const
 	this->resolver.async_resolve(
 		query,
 		// Resolve handler
-		[this](const boost::system::error_code &e, asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
+		[me=shared_from_this()](const boost::system::error_code &e, asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
 		{
 			if (e)
 			{
-				return handleError(e);
+				return me->handleError(e);
 			}
 			// Connect handler
-			this->socket.async_connect(
+			me->socket.async_connect(
 				*endpoint,
-				[this](const boost::system::error_code &e)
+				[me](const boost::system::error_code &e)
 				{
 					if (e)
 					{
-						return handleError(e);
+						return me->handleError(e);
 					}
-					else if (this->connCB)
+					else if (me->connCB)
 					{
-						this->connCB();
+						me->connCB();
 					}
 				});
 		});
@@ -87,20 +87,20 @@ void Connection::read(size_t bytes, const ReadCallback &rc)
 	asio::async_read(
 		this->socket, asio::buffer(this->inputStream.prepare(bytes)),
 		// Read handler
-		[this](const boost::system::error_code &e, size_t readSize)
+		[me=shared_from_this()](const boost::system::error_code &e, size_t readSize)
 		{
 			if (e)
 			{
-				return handleError(e);
+				return me->handleError(e);
 			}
 
-			if (this->readCB)
+			if (me->readCB)
 			{
-				const uint8_t *data = asio::buffer_cast<const uint8_t *>(this->inputStream.data());
-				this->readCB(data, readSize);
+				const uint8_t *data = asio::buffer_cast<const uint8_t *>(me->inputStream.data());
+				me->readCB(data, readSize);
 			}
 
-			this->inputStream.consume(readSize);
+			me->inputStream.consume(readSize);
 		});
 }
 
@@ -111,13 +111,13 @@ void Connection::write(const uint8_t *data, size_t bytes)
 	asio::async_write(
 		this->socket,
 		asio::buffer(data, bytes),
-		[this](const boost::system::error_code &error, std::size_t bytesTransferred)
+		[me=shared_from_this()](const boost::system::error_code &error, std::size_t bytesTransferred)
 		{
 			if (error == asio::error::operation_aborted)
 				return;
 			if (error)
 			{
-				handleError(error);
+				me->handleError(error);
 			}
 		});
 }

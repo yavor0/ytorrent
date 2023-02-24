@@ -10,7 +10,7 @@
 #include "outgoingmessage.hpp"
 
 namespace asio = boost::asio;
-class Connection // https://stackoverflow.com/a/2795371/18301773
+class Connection : public std::enable_shared_from_this<Connection> // https://stackoverflow.com/a/2795371/18301773
 {
 typedef std::function<void(const uint8_t *readCB, size_t size)> ReadCallback;
 typedef std::function<void()> ConnectCallback;
