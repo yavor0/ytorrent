@@ -3,21 +3,22 @@
 #include <vector>
 #include <iostream>
 
-Peer::Peer(Torrent *torrent)
-	: torrent(torrent)
+Peer::Peer(Torrent* t)
+	: torrent(t)
 {
 	conn = new Connection();
-	state = AmChoked | PeerChoked;
+	state = AM_CHOKING | PEER_CHOKED;
 }
 
 Peer::~Peer()
 {
+	std::cout<< "\n\n\n\n\n CLOSING \n\n\n\n\n" << std::endl;
+	std::clog<< "\n\n\n\n\n CLOSING \n\n\n\n\n" << std::endl;
 	delete conn;
 	for (Piece *p : pieceQueue)
 	{
 		delete p;
 	}
-	pieceQueue.clear();
 }
 
 void Peer::disconnect()
@@ -83,7 +84,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 			return handleError("invalid choke-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "choke");
-		state |= PeerChoked;
+		state |= PEER_CHOKED;
 		break;
 	}
 	case UNCHOKE:
@@ -91,7 +92,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 		if (payloadSize != 0)
 			return handleError("invalid unchoke-message size");
 
-		state &= ~PeerChoked;
+		state &= ~PEER_CHOKED;
 		torrent->handlePeerDebug(shared_from_this(), "unchoke");
 
 		for (const Piece *piece : pieceQueue)
@@ -107,14 +108,14 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 			return handleError("invalid interested-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "interested");
-		state |= PeerInterested;
+		state |= PEER_INTERESTED;
 
-		if (test_bit(state, AmChoked))
+		if (test_bit(state, AM_CHOKING))
 		{
 			// 4-byte length, 1-byte packet type
 			static const uint8_t unchoke[5] = {0, 0, 0, 1, UNCHOKE};
 			conn->write(unchoke, sizeof(unchoke));
-			state &= ~AmChoked;
+			state &= ~AM_CHOKING;
 		}
 
 		break;
@@ -125,7 +126,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 			return handleError("invalid not-interested-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "not interested");
-		state &= ~PeerInterested;
+		state &= ~PEER_INTERESTED;
 		break;
 	}
 	case HAVE:
@@ -196,7 +197,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 
 		Piece *piece = *it;
 		uint32_t blockIndex = begin / maxRequestSize;
-		if (blockIndex >= piece->numBlocks)
+		if (blockIndex >= piece->totalBlocks)
 			return handleError("received too big block index");
 
 		if (torrent->pieceDone(index))
@@ -210,12 +211,13 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 		{
 			piece->blocks[blockIndex].size = payloadSize;
 			piece->blocks[blockIndex].data = in.getBuffer(payloadSize);
+			piece->haveBlocks++;
 
-			if (++piece->currentBlocks == piece->numBlocks)
+			if (piece->haveBlocks == piece->totalBlocks)
 			{
 				std::vector<uint8_t> pieceData;
-				pieceData.reserve(piece->numBlocks * maxRequestSize); // just a prediction could be bit less
-				for (size_t x = 0; x < piece->numBlocks; ++x)
+				pieceData.reserve(piece->totalBlocks * maxRequestSize); // just a prediction could be bit less
+				for (size_t x = 0; x < piece->totalBlocks; ++x)
 				{
 					for (size_t y = 0; y < piece->blocks[x].size; ++y)
 					{
@@ -263,12 +265,12 @@ void Peer::handleError(const std::string &errmsg)
 
 void Peer::sendHave(uint32_t index)
 {
-	if (test_bit(state, AmChoked))
+	if (test_bit(state, AM_CHOKING))
 		return;
 
 	OutgoingMessage out(9);
 	out.addU32(5UL); // length
-	out.addByte(HAVE);
+	out.addU8(HAVE);
 	out.addU32(index);
 
 	conn->write(out);
@@ -283,12 +285,12 @@ void Peer::sendPieceRequest(uint32_t index)
 
 	Piece *piece = new Piece();
 	piece->index = index;
-	piece->currentBlocks = 0;
-	piece->numBlocks = numBlocks;
+	piece->haveBlocks = 0;
+	piece->totalBlocks = numBlocks;
 	piece->blocks = new Block[numBlocks];
 
 	pieceQueue.push_back(piece);
-	if (!test_bit(state, PeerChoked))
+	if (!test_bit(state, PEER_CHOKED))
 	{
 		requestPiece(index);
 	}
@@ -298,7 +300,7 @@ void Peer::sendRequest(uint32_t index, uint32_t begin, uint32_t length)
 {
 	OutgoingMessage out(17);
 	out.addU32(13UL); // length
-	out.addByte(REQUEST);
+	out.addU8(REQUEST);
 	out.addU32(index);
 	out.addU32(begin);
 	out.addU32(length);
@@ -311,18 +313,19 @@ void Peer::sendInterested()
 	// 4-byte length, 1 byte packet type
 	const uint8_t interested[5] = {0, 0, 0, 1, INTERESTED};
 	conn->write(interested, sizeof(interested));
-	state |= AmInterested;
+	state |= AM_INTERESTED;
 }
 
 void Peer::sendCancelRequest(Piece *p)
 {
 	size_t begin = 0;
 	size_t length = torrent->pieceSize(p->index);
-	for (; length > maxRequestSize; length -= maxRequestSize, begin += maxRequestSize)
+	while(length > maxRequestSize)
 	{
 		sendCancel(p->index, begin, maxRequestSize);
+		length -= maxRequestSize;
+		begin += maxRequestSize;
 	}
-
 	sendCancel(p->index, begin, length);
 }
 
@@ -330,7 +333,7 @@ void Peer::sendCancel(uint32_t index, uint32_t begin, uint32_t length)
 {
 	OutgoingMessage out(17);
 	out.addU32(13UL); // length
-	out.addByte(CANCEL);
+	out.addU8(CANCEL);
 	out.addU32(index);
 	out.addU32(begin);
 	out.addU32(length);
@@ -340,15 +343,17 @@ void Peer::sendCancel(uint32_t index, uint32_t begin, uint32_t length)
 
 void Peer::requestPiece(size_t pieceIndex)
 {
-	if (test_bit(state, PeerChoked))
+	if (test_bit(state, PEER_CHOKED))
 		return handleError("Attempt to request piece from a peer that is remotely choked");
 
 	size_t begin = 0;
 	size_t length = torrent->pieceSize(pieceIndex);
-	for (; length > maxRequestSize; length -= maxRequestSize, begin += maxRequestSize) // rewrite with a while for clarity
+
+	while(length > maxRequestSize)
 	{
 		sendRequest(pieceIndex, begin, maxRequestSize);
+		length -= maxRequestSize;
+		begin += maxRequestSize;
 	}
-
 	sendRequest(pieceIndex, begin, length);
 }

@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	int startport = 6881;
 	std::string dldir = "Torrents";
 	std::string file(argv[1]);
-	Torrent *t = new Torrent();
+	std::unique_ptr<Torrent> t = std::make_unique<Torrent>();
 	int completed = 0;
 
 	if (!t->parseFile(file, dldir))
@@ -31,7 +31,6 @@ int main(int argc, char *argv[])
 	std::clog << t->getName() << ": Downloaded: " << bytesToHumanReadable(t->getDownloadedBytes(), true) << std::endl;
 	std::clog << t->getName() << ": Uploaded:   " << bytesToHumanReadable(t->getUploadedBytes(), true) << std::endl;
 	Connection::stop();
-	// delete t; // ?????
 	return 0;
 }
 

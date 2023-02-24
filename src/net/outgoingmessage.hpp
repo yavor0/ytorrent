@@ -26,7 +26,7 @@ public:
 		dataBuffer.clear();
 		writeIndex = 0;
 	}
-	void addByte(uint8_t byte)
+	void addU8(uint8_t byte)
 	{
 		dataBuffer[writeIndex++] = byte;
 	}

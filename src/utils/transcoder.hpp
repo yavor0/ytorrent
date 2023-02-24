@@ -7,7 +7,7 @@
 ///////////////// Little Endian
 inline uint16_t readAsLE16(const uint8_t *addr)
 {
-	return (uint16_t)addr[1] << 8 | (uint16_t)addr[0];
+	return (uint16_t)addr[1] << 8 | addr[0];
 }
 
 inline uint32_t readAsLE32(const uint8_t *addr)
@@ -40,7 +40,7 @@ inline void writeAsLE64(uint8_t *addr, uint64_t value)
 ///////////////// Big Endian
 inline uint16_t readAsBE16(const uint8_t *addr)
 {														  // inturpret this function as "take addr and pretend it's a pointer to the start of big endian buffer and then actually perform platform-independent bit shift operations in order to store them".
-	return (uint16_t) addr[1] | (uint16_t)(addr[0]) << 8; // maths operations are platform independent
+	return (uint16_t)addr[1] | (uint16_t)(addr[0]) << 8; // maths operations are platform independent
 }
 
 inline uint32_t readAsBE32(const uint8_t *addr)

@@ -15,6 +15,7 @@ Torrent::Torrent() : completedPieces(0),
 					 pieceLength(0),
 					 totalSize(0)
 {
+	activePeers.reserve(50); // use constant
 }
 
 Torrent::~Torrent()
@@ -218,8 +219,6 @@ bool Torrent::validateTracker(const std::string &furl, const TrackerQuery &q, ui
 
 void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 {
-	activePeers.reserve(size / 6);
-
 	// 6 bytes each (first 4 is ip address, last 2 port) all in big endian notation
 	for (size_t i = 0; i < size; i += 6)
 	{

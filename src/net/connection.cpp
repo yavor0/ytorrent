@@ -20,7 +20,8 @@ void Connection::start()
 
 void Connection::stop()
 {
-	g_io_context.stop(); // Work guard is destroyed, io_context::run is free to return
+	// g_io_context.stop(); // https://stackoverflow.com/a/18555384/18301773
+	work_guard.reset();
 }
 
 void Connection::connect(const std::string &host, const std::string &port, const ConnectCallback &cb)
@@ -132,7 +133,7 @@ void Connection::handleError(const boost::system::error_code &error)
 	{
 		this->errorCB(error.message());
 	}
-	if (isConnected()) // User is free to close the connection before us
+	if (isConnected()) // User is free to close the connection before me
 	{
 		close();
 	}

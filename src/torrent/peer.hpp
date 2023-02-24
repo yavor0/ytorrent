@@ -13,10 +13,10 @@ class Peer : public std::enable_shared_from_this<Peer>
 	struct Piece;
 	enum State : uint8_t
 	{
-		AmChoked = 1 << 0,		 // I choked this peer (i.e. we're not giving him anymore pieces)
-		AmInterested = 1 << 1,	 // I'm interested in this peer's pieces
-		PeerChoked = 1 << 2,	 // Peer choked me
-		PeerInterested = 1 << 3, // Peer interested in my stuff
+		AM_CHOKING = 1 << 0,		 // I choked this peer (i.e. we're not giving him anymore pieces)
+		AM_INTERESTED = 1 << 1,	 // I'm interested in this peer's pieces
+		PEER_CHOKED = 1 << 2,	 // Peer choked me
+		PEER_INTERESTED = 1 << 3, // Peer interested in my stuff
 	};
 
 	enum MessageType : uint8_t
@@ -50,8 +50,8 @@ private:
 	struct Piece
 	{
 		size_t index;
-		size_t currentBlocks;
-		size_t numBlocks;
+		size_t haveBlocks; // how much i currently have
+		size_t totalBlocks; // total number of blocks i need
 
 		~Piece() { delete[] blocks; }
 		Block *blocks;
@@ -61,7 +61,7 @@ private:
 	std::vector<Piece *> pieceQueue;
 	std::string peerId;
 	uint8_t state;
-	Torrent *torrent;
+	Torrent* torrent;
 	Connection *conn;
 
 	void handle(const uint8_t *data, size_t size);
@@ -81,7 +81,7 @@ private:
 	inline bool hasPiece(size_t index) { return std::find(pieces.begin(), pieces.end(), index) != pieces.end(); }
 
 public:
-	Peer(Torrent *t);
+	Peer(Torrent* t);
 	~Peer();
 
 	inline void setId(const std::string &id) { peerId = id; }

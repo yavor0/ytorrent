@@ -16,7 +16,8 @@ bool Tracker::query(const TrackerQuery &query) // future abstraction for wheneve
 
 bool Tracker::httpRequest(const TrackerQuery &r)
 {
-	asio::ip::tcp::resolver resolver(g_io_context);
+	asio::io_context t_io_context;
+	asio::ip::tcp::resolver resolver(t_io_context);
 	asio::ip::tcp::resolver::query query(urlMeta.host, urlMeta.port);
 	boost::system::error_code error;
 
@@ -28,7 +29,7 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 		return false;
 	}
 
-	asio::ip::tcp::socket socket(g_io_context);
+	asio::ip::tcp::socket socket(t_io_context);
 	do
 	{
 		socket.close();
