@@ -6,7 +6,7 @@
 Peer::Peer(Torrent* t)
 	: torrent(t)
 {
-	conn = new Connection();
+	conn = std::make_shared<Connection>(); // https://stackoverflow.com/a/5558955/18301773
 	state = AM_CHOKING | PEER_CHOKED;
 }
 
@@ -14,7 +14,6 @@ Peer::~Peer()
 {
 	std::cout<< "\n\n\n\n\n CLOSING \n\n\n\n\n" << std::endl;
 	std::clog<< "\n\n\n\n\n CLOSING \n\n\n\n\n" << std::endl;
-	delete conn;
 	for (Piece *p : pieceQueue)
 	{
 		delete p;

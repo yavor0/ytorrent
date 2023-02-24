@@ -62,7 +62,7 @@ private:
 	std::string peerId;
 	uint8_t state;
 	Torrent* torrent;
-	Connection *conn;
+	std::shared_ptr<Connection> conn;
 
 	void handle(const uint8_t *data, size_t size);
 	void handleMessage(MessageType mType, IncomingMessage in);
