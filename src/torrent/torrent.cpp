@@ -15,7 +15,7 @@ Torrent::Torrent() : completedPieces(0),
 					 pieceLength(0),
 					 totalSize(0)
 {
-	activePeers.reserve(50); // use constant
+	activePeers.reserve(100); // use constant
 }
 
 Torrent::~Torrent()
@@ -29,16 +29,16 @@ Torrent::~Torrent()
 		}
 	}
 
-	// std::cout << "\n\n\n\n\n\n-----USE COUNT-----\n\n\n\n\n\n" << std::endl;
-	// for(auto peer:activePeers)
+	// for(size_t i =0; i<this->activePeers.size();i++)
 	// {
-	// 	std::cout << "Use count: " << peer.use_count() << std::endl;
+	// 	activePeers[i]->disconnect();
+	// 	// activePeers[i].get()->~Peer();
+	// 	if(activePeers[i].use_count() == 4)
+	// 	{
+	// 		// delete activePeers[i].get();
+	// 		activePeers[i].get()->~Peer();
+	// 	}	
 	// }
-	// std::cout << "\n\n\n\n\n\n\n\n\n\n\n\n" << std::endl;
-	// activePeers.clear();
-	// std::cout << activePeers.size() << std::endl;
-	// std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-	// std::cout << "\n\n\n\n\nHERE\n\n\n\n\n" << std::endl;
 }
 
 bool Torrent::parseFile(const std::string &fileName, const std::string &downloadDir)
@@ -48,7 +48,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 	decodedData = bencoding::decode(input);
 	std::shared_ptr<BDictionary> torrMetaDict = decodedData->as<BDictionary>();
 
-	std::shared_ptr<BItem> &annVal = (*torrMetaDict)[BString::create("announce")]; //
+	std::shared_ptr<BItem> &annVal = (*torrMetaDict)[BString::create("announce")];
 	std::shared_ptr<BString> bStrAnn = annVal->as<BString>();
 	mainTrackerUrl = bStrAnn->value();
 
@@ -207,7 +207,7 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 
 	TrackerEvent event;
 	event = (completedPieces == piecesNeeded) ? TrackerEvent::COMPLETED : TrackerEvent::STOPPED;
-
+	
 	mainTracker->query(buildTrackerQuery(event));
 	// disconnectPeers();
 	return event == TrackerEvent::COMPLETED ? DownloadError::COMPLETED : DownloadError::NETWORK_ERROR;
@@ -288,6 +288,12 @@ void Torrent::disconnectPeers()
 	for(size_t i =0; i<this->activePeers.size();i++)
 	{
 		activePeers[i]->disconnect();
+		// activePeers[i].get()->~Peer();
+		if(activePeers[i].use_count() == 4)
+		{
+			delete activePeers[i].get();
+
+		}	
 	}
 
 	// for (const std::shared_ptr<Peer> &peer : activePeers)
@@ -302,7 +308,6 @@ void Torrent::disconnectPeers()
 	// 	const auto &peer = *begin;
 	// 	peer->disconnect();
 	// }
-	
 }
 
 void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)

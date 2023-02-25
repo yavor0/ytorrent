@@ -3,7 +3,7 @@
 #include <vector>
 #include <iostream>
 
-Peer::Peer(Torrent* t)
+Peer::Peer(Torrent *t)
 	: torrent(t)
 {
 	conn = std::make_shared<Connection>(); // https://stackoverflow.com/a/5558955/18301773
@@ -13,8 +13,20 @@ Peer::Peer(Torrent* t)
 
 Peer::~Peer()
 {
-	std::cout<< "\n\n\n\n\n CLOSING \n\n\n\n\n" << std::endl;
-	std::clog<< "\n\n\n\n\n CLOSING \n\n\n\n\n" << std::endl;
+	std::clog << "\n\n\n\n Destructor CALLED \n\n\n\n" << std::endl;
+	// for (Piece *p : pieceQueue)
+	// {
+	// 	delete p;
+	// }
+	for(size_t i=0;i<pieceQueue.size();i++)
+	{
+		delete pieceQueue[i];
+	}
+}
+
+void Peer::simulateDestructor()
+{
+	std::clog << "\n\n\n\n simulateDestructor CALLED \n\n\n\n" << std::endl;
 	for (Piece *p : pieceQueue)
 	{
 		delete p;
@@ -23,10 +35,7 @@ Peer::~Peer()
 
 void Peer::disconnect()
 {
-	std::cout << "TEST PEER DISCONNECT" << std::endl;
-	std::cout << "BEFORE: " << (void*)torrent << std::endl;
 	torrent->removePeer(shared_from_this(), "disconnect called");
-	std::cout << "AFTER: " << (void*)torrent << std::endl;
 	conn->close(false);
 }
 
@@ -34,24 +43,24 @@ void Peer::connect(const std::string &ip, const std::string &port)
 {
 	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
 	conn->connect(ip, port,
-				  [me=shared_from_this()]()
+				  [me = shared_from_this()]()
 				  {
 					  const uint8_t *myHandshake = (me->torrent)->getHandshake();
 					  (me->conn)->write(myHandshake, 68);
 					  (me->conn)->read(68,
-								 [me, myHandshake](const uint8_t *peerHandshake, size_t size)
-								 {
-									 if (size != 68 || (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&peerHandshake[28], &myHandshake[28], 20) != 0)
-										 return me->handleError("info hash/protocol type mismatch");
+									   [me, myHandshake](const uint8_t *peerHandshake, size_t size)
+									   {
+										   if (size != 68 || (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&peerHandshake[28], &myHandshake[28], 20) != 0)
+											   return me->handleError("info hash/protocol type mismatch");
 
-									 std::string peerId((const char *)&peerHandshake[48], 20);
-									 if (!peerId.empty() && peerId != peerId)
-										 return me->handleError("unverified");
+										   std::string peerId((const char *)&peerHandshake[48], 20);
+										   if (!peerId.empty() && peerId != peerId)
+											   return me->handleError("unverified");
 
-									 peerId = peerId;
-									 (me->torrent)->addPeer(me->shared_from_this());
-									 (me->conn)->read(4, std::bind(&Peer::handle, me->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-								 });
+										   peerId = peerId;
+										   (me->torrent)->addPeer(me);
+										   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
+									   });
 				  });
 }
 
@@ -67,15 +76,15 @@ void Peer::handle(const uint8_t *data, size_t size)
 		return conn->read(4, std::bind(&Peer::handle, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 	default:
 		conn->read(length,
-				   [me=shared_from_this()](const uint8_t *data, size_t size)
+				   [me = shared_from_this()](const uint8_t *data, size_t size)
 				   {
 					   IncomingMessage in(const_cast<uint8_t *>(&data[1]), size - 1);
-					   me->handleMessage((MessageType)data[0], in);
+					   me->handleMessage((MessageID)data[0], in);
 				   });
 	}
 }
 
-void Peer::handleMessage(MessageType messageType, IncomingMessage in)
+void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 {
 	size_t payloadSize = in.getSize();
 
@@ -268,7 +277,7 @@ void Peer::handleError(const std::string &errmsg)
 
 void Peer::sendHave(uint32_t index)
 {
-	if(state.test(AM_CHOKING))
+	if (state.test(AM_CHOKING))
 		return;
 
 	OutgoingMessage out(9);
@@ -293,7 +302,7 @@ void Peer::sendPieceRequest(uint32_t index)
 	piece->blocks = new Block[numBlocks];
 
 	pieceQueue.push_back(piece);
-	if(!state.test(PEER_CHOKED))
+	if (!state.test(PEER_CHOKED))
 	{
 		requestPiece(index);
 	}
@@ -323,7 +332,7 @@ void Peer::sendCancelRequest(Piece *p)
 {
 	size_t begin = 0;
 	size_t length = torrent->pieceSize(p->index);
-	while(length > maxRequestSize)
+	while (length > maxRequestSize)
 	{
 		sendCancel(p->index, begin, maxRequestSize);
 		length -= maxRequestSize;
@@ -346,14 +355,14 @@ void Peer::sendCancel(uint32_t index, uint32_t begin, uint32_t length)
 
 void Peer::requestPiece(size_t pieceIndex)
 {
-	if(state.test(PEER_CHOKED))
+	if (state.test(PEER_CHOKED))
 	{
 		return handleError("Attempt to request piece from a peer that is remotely choked");
 	}
 	size_t begin = 0;
 	size_t length = torrent->pieceSize(pieceIndex);
 
-	while(length > maxRequestSize)
+	while (length > maxRequestSize)
 	{
 		sendRequest(pieceIndex, begin, maxRequestSize);
 		length -= maxRequestSize;

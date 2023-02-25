@@ -85,7 +85,7 @@ void Connection::read(size_t bytes, const ReadCallback &rc)
 
 	this->readCB = rc;
 	asio::async_read(
-		this->socket, asio::buffer(this->inputStream.prepare(bytes)),
+		this->socket, this->inputStream.prepare(bytes),
 		// Read handler
 		[me=shared_from_this()](const boost::system::error_code &e, size_t readSize)
 		{

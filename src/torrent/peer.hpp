@@ -21,7 +21,7 @@ class Peer : public std::enable_shared_from_this<Peer>
 		PEER_INTERESTED = 3
 	};
 
-	enum MessageType : uint8_t
+	enum MessageID : uint8_t
 	{
 		CHOKE = 0,
 		UNCHOKE = 1,
@@ -67,7 +67,7 @@ private:
 	std::shared_ptr<Connection> conn;
 
 	void handle(const uint8_t *data, size_t size);
-	void handleMessage(MessageType messageType, IncomingMessage in);
+	void handleMessage(MessageID messageType, IncomingMessage in);
 	void handleError(const std::string &msg);
 
 	void sendInterested();
@@ -84,8 +84,9 @@ private:
 
 public:
 	Peer(Torrent* t);
-	~Peer();
+	~Peer(); // this is noexcept
 
+	void simulateDestructor();
 	inline void setId(const std::string &id) { peerId = id; }
 	inline std::string getStrIp() const { return conn->getIPString(); }
 	inline uint32_t getRawIp() const { return conn->getIP(); }
