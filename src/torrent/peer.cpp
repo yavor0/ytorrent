@@ -7,7 +7,8 @@ Peer::Peer(Torrent* t)
 	: torrent(t)
 {
 	conn = std::make_shared<Connection>(); // https://stackoverflow.com/a/5558955/18301773
-	state = AM_CHOKING | PEER_CHOKED;
+	state.set(AM_CHOKING);
+	state.set(PEER_CHOKED);
 }
 
 Peer::~Peer()
@@ -86,7 +87,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 			return handleError("invalid choke-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "choke");
-		state |= PEER_CHOKED;
+		state.set(PEER_CHOKED);
 		break;
 	}
 	case UNCHOKE:
@@ -94,7 +95,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 		if (payloadSize != 0)
 			return handleError("invalid unchoke-message size");
 
-		state &= ~PEER_CHOKED;
+		state.reset(PEER_CHOKED);
 		torrent->handlePeerDebug(shared_from_this(), "unchoke");
 
 		for (const Piece *piece : pieceQueue)
@@ -110,14 +111,14 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 			return handleError("invalid interested-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "interested");
-		state |= PEER_INTERESTED;
+		state.set(PEER_INTERESTED);
 
-		if (test_bit(state, AM_CHOKING))
+		if (state.test(AM_CHOKING))
 		{
 			// 4-byte length, 1-byte packet type
 			static const uint8_t unchoke[5] = {0, 0, 0, 1, UNCHOKE};
 			conn->write(unchoke, sizeof(unchoke));
-			state &= ~AM_CHOKING;
+			state.reset(AM_CHOKING);
 		}
 
 		break;
@@ -128,7 +129,7 @@ void Peer::handleMessage(MessageType messageType, IncomingMessage in)
 			return handleError("invalid not-interested-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "not interested");
-		state &= ~PEER_INTERESTED;
+		state.reset(PEER_INTERESTED);
 		break;
 	}
 	case HAVE:
@@ -267,7 +268,7 @@ void Peer::handleError(const std::string &errmsg)
 
 void Peer::sendHave(uint32_t index)
 {
-	if (test_bit(state, AM_CHOKING))
+	if(state.test(AM_CHOKING))
 		return;
 
 	OutgoingMessage out(9);
@@ -292,7 +293,7 @@ void Peer::sendPieceRequest(uint32_t index)
 	piece->blocks = new Block[numBlocks];
 
 	pieceQueue.push_back(piece);
-	if (!test_bit(state, PEER_CHOKED))
+	if(!state.test(PEER_CHOKED))
 	{
 		requestPiece(index);
 	}
@@ -315,7 +316,7 @@ void Peer::sendInterested()
 	// 4-byte length, 1 byte packet type
 	const uint8_t interested[5] = {0, 0, 0, 1, INTERESTED};
 	conn->write(interested, sizeof(interested));
-	state |= AM_INTERESTED;
+	state.set(AM_INTERESTED);
 }
 
 void Peer::sendCancelRequest(Piece *p)
@@ -345,9 +346,10 @@ void Peer::sendCancel(uint32_t index, uint32_t begin, uint32_t length)
 
 void Peer::requestPiece(size_t pieceIndex)
 {
-	if (test_bit(state, PEER_CHOKED))
+	if(state.test(PEER_CHOKED))
+	{
 		return handleError("Attempt to request piece from a peer that is remotely choked");
-
+	}
 	size_t begin = 0;
 	size_t length = torrent->pieceSize(pieceIndex);
 

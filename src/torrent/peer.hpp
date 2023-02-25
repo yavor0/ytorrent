@@ -6,17 +6,19 @@
 
 #include <memory>
 #include <vector>
+#include <bitset>
 
 class Torrent;
 class Peer : public std::enable_shared_from_this<Peer>
 {
 	struct Piece;
+
 	enum State : uint8_t
 	{
-		AM_CHOKING = 1 << 0,		 // I choked this peer (i.e. we're not giving him anymore pieces)
-		AM_INTERESTED = 1 << 1,	 // I'm interested in this peer's pieces
-		PEER_CHOKED = 1 << 2,	 // Peer choked me
-		PEER_INTERESTED = 1 << 3, // Peer interested in my stuff
+		AM_CHOKING = 0,
+		AM_INTERESTED = 1,
+		PEER_CHOKED = 2,
+		PEER_INTERESTED = 3
 	};
 
 	enum MessageType : uint8_t
@@ -60,13 +62,13 @@ private:
 	std::vector<size_t> pieces;
 	std::vector<Piece *> pieceQueue;
 	std::string peerId;
-	uint8_t state;
+	std::bitset<4> state;
 	Torrent* torrent;
 	std::shared_ptr<Connection> conn;
 
 	void handle(const uint8_t *data, size_t size);
-	void handleMessage(MessageType mType, IncomingMessage in);
-	void handleError(const std::string &);
+	void handleMessage(MessageType messageType, IncomingMessage in);
+	void handleError(const std::string &msg);
 
 	void sendInterested();
 	void sendHave(uint32_t index);

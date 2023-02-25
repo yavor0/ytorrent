@@ -78,7 +78,7 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 		<< "&compact=1"
 		<< urlMeta.passKeyParam
 		<< " HTTP/1.0\r\n"
-		<< "Host: " << urlMeta.host 
+		<< "Host: " << urlMeta.host
 		<< "\r\n"
 		<< "User-Agent: YtoRRenT"
 		<< "\r\n"
@@ -131,8 +131,7 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 
 	// Seek to start of body
 	std::string header;
-	while (std::getline(rbuf, header) && header != "\r")
-		;
+	while (std::getline(rbuf, header) && header != "\r");
 	if (!rbuf)
 	{
 		torrent->handleTrackerError(shared_from_this(), "Unable to get to tracker response body.");

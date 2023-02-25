@@ -28,9 +28,4 @@ std::string getcwd();
 
 bool nodeExists(const std::string& node);
 
-static inline bool test_bit(uint32_t bits, uint32_t bit)
-{
-	return (bits & bit) == bit;
-}
-
 #endif
