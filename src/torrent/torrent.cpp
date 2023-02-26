@@ -23,7 +23,7 @@ Torrent::~Torrent()
 	if (file.fp != nullptr)
 	{
 		fclose(file.fp);
-		file.fp=nullptr;
+		file.fp = nullptr;
 	}
 
 	// for(size_t i =0; i<this->activePeers.size();i++)
@@ -34,7 +34,7 @@ Torrent::~Torrent()
 	// 	{
 	// 		// delete activePeers[i].get();
 	// 		activePeers[i].get()->~Peer();
-	// 	}	
+	// 	}
 	// }
 }
 
@@ -174,7 +174,7 @@ TrackerQuery Torrent::buildTrackerQuery(TrackerEvent event) const // MOVE THIS F
 Torrent::DownloadError Torrent::download(uint16_t port)
 {
 	size_t piecesNeeded = pieces.size();
-
+	startDownloadTime = std::chrono::high_resolution_clock::now();
 	if (!validateTracker(mainTrackerUrl, buildTrackerQuery(TrackerEvent::STARTED), port))
 	{
 		return DownloadError::TRACKER_QUERY_FAILURE;
@@ -196,12 +196,12 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	if (file.fp != nullptr)
 	{
 		fclose(file.fp);
-		file.fp=nullptr;
+		file.fp = nullptr;
 	}
 
 	TrackerEvent event;
 	event = (completedPieces == piecesNeeded) ? TrackerEvent::COMPLETED : TrackerEvent::STOPPED;
-	
+
 	mainTracker->query(buildTrackerQuery(event));
 	// disconnectPeers();
 	return event == TrackerEvent::COMPLETED ? DownloadError::COMPLETED : DownloadError::NETWORK_ERROR;
@@ -233,14 +233,14 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 	{
 		const uint8_t *iport = peers + i;
 		uint32_t ip = readAsLE32(iport);
-		
+
 		// race condition?
 		bool exists = false;
-		for(size_t i=0;i<activePeers.size();i++)
+		for (size_t i = 0; i < activePeers.size(); i++)
 		{
-			if(activePeers[i]->getRawIp() == ip)
+			if (activePeers[i]->getRawIp() == ip)
 			{
-				exists=true;
+				exists = true;
 				break;
 			}
 		}
@@ -258,7 +258,7 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
 {
-	
+
 	activePeers.push_back(peer);
 	std::clog << name << ": Peers: " << activePeers.size() << std::endl;
 }
@@ -279,15 +279,14 @@ void Torrent::disconnectPeers()
 {
 	// The elements of activePeers are edited asynchronously, there are race conditions
 	// instead of using iterators which become invalid, manual indexing is used here
-	for(size_t i =0; i<this->activePeers.size();i++)
+	for (size_t i = 0; i < this->activePeers.size(); i++)
 	{
 		activePeers[i]->disconnect();
 		// activePeers[i].get()->~Peer();
-		if(activePeers[i].use_count() == 4)
+		if (activePeers[i].use_count() == 4)
 		{
 			delete activePeers[i].get();
-
-		}	
+		}
 	}
 
 	// for (const std::shared_ptr<Peer> &peer : activePeers)
@@ -335,6 +334,40 @@ void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)
 	}
 }
 
+size_t Torrent::calculateETA() const{// FIX
+    // calculate remaining size to download
+    size_t remaining_size = totalSize - (getDownloadedPieceCount()*pieceLength);
+
+    // calculate ETA in seconds
+    double eta_sec = static_cast<double>(remaining_size) / (getDownloadSpeed()*1000000.0);
+
+    return static_cast<size_t>(eta_sec + 0.5);
+}
+
+size_t Torrent::getDownloadedPieceCount() const
+{
+	size_t downloaded = 0;
+	for (size_t i = 0; i < pieces.size(); ++i)
+	{
+		if (pieces[i].done)
+		{
+			downloaded += pieceSize(i);
+		}
+	}
+	return downloaded;
+}
+
+double Torrent::getDownloadSpeed() const
+{
+    auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startDownloadTime).count();
+    size_t downloaded = getDownloadedPieceCount();
+    if (elapsedSec == 0)
+        return 0.0;
+
+    double speed = (double)(downloaded / elapsedSec);
+    return speed / 1000000.0;
+}
+
 void Torrent::handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error)
 {
 	std::cerr << name << ": tracker request failed: " << error << std::endl;
@@ -373,6 +406,9 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	std::clog << name << ": " << peer->getStrIp() << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
 			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", "
 			  << "Hash miss: " << hashMisses << ")"
+			  << std::endl
+			  << name << ": Download speed: " << getDownloadSpeed() << " Mbps"
+			//   << ", ETA: " << calculateETA() << " seconds"
 			  << std::endl;
 }
 
@@ -396,7 +432,8 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t ind
 	errno = 0;
 	FILE *fp = file.fp;
 	uint8_t c = fgetc(fp);
-	if (errno == EBADF && !(fp = fopen(file.path.c_str(), "rb"))) {
+	if (errno == EBADF && !(fp = fopen(file.path.c_str(), "rb")))
+	{
 		std::cerr << name << ": handleRequestBlock(): unable to open: " << file.path.c_str() << ": " << strerror(errno) << std::endl;
 		return;
 	}
@@ -407,10 +444,12 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t ind
 	// read up to file end but do not exceed requested buffer length
 	size_t readSize = std::max(fileEnd - filePos, length - writePos);
 	size_t max = writePos + readSize;
-	while (writePos < max) {
+	while (writePos < max)
+	{
 		int read = fread(&block[writePos], 1, readSize - writePos, fp);
-		if (read < 0) {
-			if(errno == EBADF)
+		if (read < 0)
+		{
+			if (errno == EBADF)
 			{
 				fclose(fp);
 			}
@@ -419,7 +458,7 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t ind
 		}
 		writePos += read;
 	}
-	if(errno == EBADF)
+	if (errno == EBADF)
 	{
 		fclose(fp);
 	}

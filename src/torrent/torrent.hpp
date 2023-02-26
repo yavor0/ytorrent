@@ -8,6 +8,7 @@
 #include <string>
 #include <fstream>
 #include <mutex>
+#include <chrono>
 
 static int64_t maxRequestSize = 16384; // 16KiB initial (per piece)
 class Torrent
@@ -44,6 +45,7 @@ private:
 	std::string mainTrackerUrl;
 	std::shared_ptr<Tracker> mainTracker;
 
+	std::chrono::high_resolution_clock::time_point startDownloadTime;
 	uint8_t handshake[68];
 	uint8_t peerId[20];
 
@@ -65,6 +67,9 @@ private:
 	inline const uint8_t *getHandshake() const { return handshake; }
 	inline size_t getTotalPieces() const { return pieces.size(); }
 	inline size_t getCompletedPieces() const { return completedPieces; }
+	size_t calculateETA() const;
+	size_t getDownloadedPieceCount() const;
+	double getDownloadSpeed() const;
 
 	TrackerQuery buildTrackerQuery(TrackerEvent event) const;
 	void handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error);
