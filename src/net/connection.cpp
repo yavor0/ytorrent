@@ -113,8 +113,6 @@ void Connection::write(const uint8_t *data, size_t bytes)
 		asio::buffer(data, bytes),
 		[me=shared_from_this()](const boost::system::error_code &error, std::size_t bytesTransferred)
 		{
-			if (error == asio::error::operation_aborted)
-				return;
 			if (error)
 			{
 				me->handleError(error);
@@ -124,11 +122,6 @@ void Connection::write(const uint8_t *data, size_t bytes)
 
 void Connection::handleError(const boost::system::error_code &error)
 {
-	if (error == asio::error::operation_aborted)
-	{
-		return;
-	}
-
 	if (this->errorCB)
 	{
 		this->errorCB(error.message());
