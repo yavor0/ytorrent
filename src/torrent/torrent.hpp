@@ -86,6 +86,7 @@ public:
 	bool parseFile(const std::string &fileName, const std::string &downloadDir);
 	DownloadError download(uint16_t port);
 
+	inline bool isFullyDownloaded() const { return completedPieces == pieces.size(); }
 	inline size_t getActivePeers() const { return activePeers.size(); }
 	inline int64_t getTotalSize() const { return totalSize; }
 	inline int64_t getDownloadedBytes() const { return downloadedBytes; }

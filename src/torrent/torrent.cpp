@@ -410,14 +410,19 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t ind
 	while (writePos < max) {
 		int read = fread(&block[writePos], 1, readSize - writePos, fp);
 		if (read < 0) {
-			fclose(fp);
+			if(errno == EBADF)
+			{
+				fclose(fp);
+			}
 			std::cerr << name << ": handleRequestBlock(): unable to read from: " << file.path.c_str() << std::endl;
 			return;
 		}
 		writePos += read;
 	}
-	fclose(fp);
-	
+	if(errno == EBADF)
+	{
+		fclose(fp);
+	}
 
 	peer->sendPieceBlock(index, begin, block, length);
 	uploadedBytes += length;

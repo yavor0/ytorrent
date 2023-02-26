@@ -161,26 +161,24 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 			return handleError("invalid bitfield-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "bit field");
-		uint8_t *buf = in.getBuffer(); // std::unique_ptr<uint8_t[]> buf(in.getBuffer());
-		for (size_t i = 0, index = 0; i < payloadSize; ++i)
-		{
-			for (uint8_t x = 128; x > 0; x >>= 1)
-			{
-				if ((buf[i] & x) != x)
-				{
-					++index;
-					continue;
+		uint8_t *buf = in.getBuffer();
+		for (size_t i = 0; i < payloadSize; ++i) {
+			for (uint8_t x = 0; x < 8; ++x) {
+				if (buf[i] & (1 << (7 - x))) {
+					size_t index = i * 8 + x;
+					if (index < torrent->getTotalPieces())
+					{
+						pieces.push_back(index);
+					}
+						
 				}
-
-				if (index >= torrent->getTotalPieces())
-					break;
-
-				pieces.push_back(index++);
 			}
 		}
 
-		torrent->requestPiece(shared_from_this());
-
+		if (!torrent->isFullyDownloaded())
+		{
+			torrent->requestPiece(shared_from_this());
+		}
 		break;
 	}
 	case REQUEST:
