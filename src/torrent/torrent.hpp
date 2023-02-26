@@ -29,7 +29,7 @@ private:
 
 	std::vector<std::shared_ptr<Peer>> activePeers; // make this thread-safe??
 	std::vector<Piece> pieces;
-	std::vector<File> files;
+	File file;
 
 	size_t completedPieces;
 	size_t uploadedBytes;
@@ -70,7 +70,7 @@ private:
 	void handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error);
 	void handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg);
 	void handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &data);
-
+	void handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t index, uint32_t begin, uint32_t length);
 public:
 	// std::mutex removeLock;
 	enum class DownloadError

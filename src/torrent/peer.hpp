@@ -74,6 +74,7 @@ private:
 	void sendHave(uint32_t index);
 	void sendRequest(uint32_t index, uint32_t begin, uint32_t size);
 	void sendPieceRequest(uint32_t index);
+	void sendPieceBlock(uint32_t index, uint32_t begin, uint8_t *block, uint32_t size);
 	void sendCancelRequest(Piece *p);
 	void sendCancel(uint32_t index, uint32_t begin, uint32_t size);
 

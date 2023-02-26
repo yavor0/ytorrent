@@ -185,7 +185,30 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case REQUEST:
 	{
-		// bro isn't getting anything from me
+		if (payloadSize != 12)
+			return handleError("invalid request-message size");
+
+		if (!state.test(PEER_INTERESTED))
+			return handleError("peer requested piece block without showing interest");
+
+		if (state.test(AM_CHOKING))
+			return handleError("peer requested piece while choked");
+
+		uint32_t index, begin, length;
+		index = in.extractNextU32();
+		begin = in.extractNextU32();
+		length = in.extractNextU32();
+
+		if (length > maxRequestSize)
+			return handleError("peer requested piece of size " + bytesToHumanReadable(length, true) + " which is beyond our max request size");
+
+		if(!torrent->pieceDone(index))
+		{
+			break;
+		}
+
+		torrent->handlePeerDebug(shared_from_this(), "\n\n\n\nrequested piece block of length " + bytesToHumanReadable(length, true) + "\n\n\n\n");
+		torrent->handleRequestBlock(shared_from_this(), index, begin, length);
 		break;
 	}
 	case PIECE_BLOCK:
@@ -306,6 +329,18 @@ void Peer::sendPieceRequest(uint32_t index)
 	{
 		requestPiece(index);
 	}
+}
+
+void Peer::sendPieceBlock(uint32_t index, uint32_t begin, uint8_t *block, uint32_t length)
+{
+	OutgoingMessage out(13 + length);
+	out.addU32(9UL + length);	// length
+	out.addU8((uint8_t)PIECE_BLOCK);
+	out.addU32(index);
+	out.addU32(begin);
+	out.addBytes(block, length);
+
+	conn->write(out);
 }
 
 void Peer::sendRequest(uint32_t index, uint32_t begin, uint32_t length)

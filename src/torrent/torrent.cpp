@@ -20,13 +20,10 @@ Torrent::Torrent() : completedPieces(0),
 
 Torrent::~Torrent()
 {
-	for (auto &f : files)
+	if (file.fp != nullptr)
 	{
-		if (f.fp != nullptr)
-		{
-			fclose(f.fp);
-			f.fp=nullptr;
-		}
+		fclose(file.fp);
+		file.fp=nullptr;
 	}
 
 	// for(size_t i =0; i<this->activePeers.size();i++)
@@ -129,7 +126,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 		}
 
 		totalSize = length;
-		this->files.push_back(file);
+		this->file = file;
 	}
 
 	chdir("..");
@@ -195,14 +192,11 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
-	for (auto &f : files)
+	// https://stackoverflow.com/a/17941712/18301773
+	if (file.fp != nullptr)
 	{
-	 	// https://stackoverflow.com/a/17941712/18301773
-		if (f.fp != nullptr)
-		{
-			fclose(f.fp);
-			f.fp=nullptr;
-		}
+		fclose(file.fp);
+		file.fp=nullptr;
 	}
 
 	TrackerEvent event;
@@ -364,29 +358,12 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	pieces[index].done = true;
 	downloadedBytes += pieceData.size();
 	++completedPieces;
-
-	int64_t beginPos = index * pieceLength;
 	const uint8_t *data = &pieceData[0];
-	size_t off = 0;
+
 	size_t size = pieceData.size();
-	for (const File &file : files)
-	{
-		int64_t fileEnd = file.begin + file.length;
-		if (beginPos < file.begin || beginPos >= fileEnd)
-			break;
-
-		int64_t amount = fileEnd - beginPos;
-		if (amount > size)
-		{
-			amount = size;
-		}
-
-		fseek(file.fp, beginPos - file.begin, SEEK_SET);
-		size_t wrote = fwrite(data + off, 1, amount, file.fp);
-		off += wrote;
-		size -= wrote;
-		beginPos += wrote;
-	}
+	int64_t beginPos = index * pieceLength;
+	fseek(file.fp, beginPos - file.begin, SEEK_SET);
+	size_t wrote = fwrite(data, 1, size, file.fp);
 
 	for (const std::shared_ptr<Peer> &peer : activePeers)
 	{
@@ -397,6 +374,54 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", "
 			  << "Hash miss: " << hashMisses << ")"
 			  << std::endl;
+}
+
+void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t index, uint32_t begin, uint32_t length)
+{
+	// Peer requested piece block from us
+	if (index >= pieces.size())
+		return peer->disconnect();
+
+	size_t blockEnd = begin + length;
+	if (blockEnd > pieceSize(index))
+		return peer->disconnect();
+
+	uint8_t *block = new uint8_t[length];
+	size_t writePos = 0;
+	size_t blockBegin = begin + (index * pieceLength);
+
+	size_t filePos = blockBegin + writePos;
+	size_t fileEnd = file.begin + file.length;
+	// open for read check
+	errno = 0;
+	FILE *fp = file.fp;
+	uint8_t c = fgetc(fp);
+	if (errno == EBADF && !(fp = fopen(file.path.c_str(), "rb"))) {
+		std::cerr << name << ": handleRequestBlock(): unable to open: " << file.path.c_str() << ": " << strerror(errno) << std::endl;
+		return;
+	}
+
+	// seek to where it begins
+	fseek(fp, filePos - file.begin, SEEK_SET);
+
+	// read up to file end but do not exceed requested buffer length
+	size_t readSize = std::max(fileEnd - filePos, length - writePos);
+	size_t max = writePos + readSize;
+	while (writePos < max) {
+		int read = fread(&block[writePos], 1, readSize - writePos, fp);
+		if (read < 0) {
+			fclose(fp);
+			std::cerr << name << ": handleRequestBlock(): unable to read from: " << file.path.c_str() << std::endl;
+			return;
+		}
+		writePos += read;
+	}
+	fclose(fp);
+	
+
+	peer->sendPieceBlock(index, begin, block, length);
+	uploadedBytes += length;
+	delete block;
 }
 
 int64_t Torrent::pieceSize(size_t pieceIndex) const

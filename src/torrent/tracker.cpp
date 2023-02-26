@@ -149,7 +149,6 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 
 	// TODO: Implement error handling for when the tracker returns an empty dictionary and a failure reason flag
 
-	// std::cout << "\n\n\n" << peersInfo.length() << "\n\n\n" << std::endl;
 	timeToNextRequest = std::chrono::system_clock::now() + std::chrono::milliseconds(trackerTimeout);
 	if (r.event == TrackerEvent::NONE || r.event == TrackerEvent::STARTED)
 	{
