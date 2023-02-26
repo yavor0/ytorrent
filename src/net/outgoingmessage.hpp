@@ -26,6 +26,13 @@ public:
 		dataBuffer.clear();
 		writeIndex = 0;
 	}
+	void addBytes(const uint8_t *bytes, size_t size)
+	{
+		dataBuffer.reserve(size);
+		memcpy(&dataBuffer[writeIndex], &bytes[0], size);
+		writeIndex += size;
+	}
+
 	void addU8(uint8_t byte)
 	{
 		dataBuffer[writeIndex++] = byte;
