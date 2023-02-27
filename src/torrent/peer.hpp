@@ -6,7 +6,8 @@
 
 #include <memory>
 #include <vector>
-#include <bitset>
+
+#include <boost/dynamic_bitset.hpp>
 
 class Torrent;
 class Peer : public std::enable_shared_from_this<Peer>
@@ -62,8 +63,8 @@ private:
 	std::vector<size_t> pieces;
 	std::vector<Piece *> pieceQueue;
 	std::string peerId;
-	std::bitset<4> state;
 	Torrent* torrent;
+	boost::dynamic_bitset<> state;
 	std::shared_ptr<Connection> conn;
 
 	void handle(const uint8_t *data, size_t size);
@@ -72,6 +73,7 @@ private:
 
 	void sendInterested();
 	void sendHave(uint32_t index);
+	void sendBitfield(std::vector<uint8_t> rBitfield);
 	void sendRequest(uint32_t index, uint32_t begin, uint32_t size);
 	void sendPieceRequest(uint32_t index);
 	void sendPieceBlock(uint32_t index, uint32_t begin, uint8_t *block, uint32_t size);
@@ -83,8 +85,10 @@ private:
 
 	inline bool hasPiece(size_t index) { return std::find(pieces.begin(), pieces.end(), index) != pieces.end(); }
 
+	void authenticate();
 public:
 	Peer(Torrent* t);
+	Peer(Torrent* t, std::shared_ptr<Connection>& conn);
 	~Peer(); // this is noexcept
 
 	void simulateDestructor();

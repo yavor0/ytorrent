@@ -3,7 +3,9 @@
 
 #include "peer.hpp"
 #include "tracker.hpp"
-#include "bencoding/bencoding.h"
+
+#include <net/acceptor.hpp>
+#include <bencoding/bencoding.h>
 #include <vector>
 #include <string>
 #include <fstream>
@@ -23,15 +25,17 @@ private:
 	};
 	struct Piece
 	{
-		bool done;
+		bool finished;
 		int32_t priority;
 		uint8_t hash[20];
 	};
 
+	Acceptor *acceptor;
 	std::vector<std::shared_ptr<Peer>> activePeers; // make this thread-safe??
 	std::vector<Piece> pieces;
 	File file;
 
+	boost::dynamic_bitset<uint8_t> bitfield; // https://stackoverflow.com/questions/8297913/how-do-i-convert-bitset-to-array-of-bytes-uint8#comment53493292_9081167
 	size_t completedPieces;
 	size_t uploadedBytes;
 	size_t downloadedBytes;
@@ -58,7 +62,7 @@ private:
 	void requestPiece(const std::shared_ptr<Peer> &peer, size_t pieceIndex);
 	void requestPiece(const std::shared_ptr<Peer> &peer);
 	int64_t pieceSize(size_t pieceIndex) const;
-	inline bool pieceDone(size_t pieceIndex) const { return pieces[pieceIndex].done; }
+	inline bool pieceDone(size_t pieceIndex) const { return pieces[pieceIndex].finished; }
 
 	void addPeer(const std::shared_ptr<Peer> &peer);
 	void removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg);
@@ -67,6 +71,7 @@ private:
 	inline const uint8_t *getHandshake() const { return handshake; }
 	inline size_t getTotalPieces() const { return pieces.size(); }
 	inline size_t getCompletedPieces() const { return completedPieces; }
+	std::vector<uint8_t> getRawBitfield() const;
 	size_t calculateETA() const;
 	double getDownloadSpeed() const;
 

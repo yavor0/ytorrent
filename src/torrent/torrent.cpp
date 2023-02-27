@@ -7,7 +7,10 @@
 #include <boost/uuid/detail/sha1.hpp>
 using namespace bencoding;
 
-Torrent::Torrent() : completedPieces(0),
+Torrent::Torrent() : 
+					 acceptor(nullptr),
+					 bitfield(0),
+					 completedPieces(0),
 					 uploadedBytes(0),
 					 downloadedBytes(0),
 					 wastedBytes(0),
@@ -78,11 +81,14 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 	for (size_t i = 0; i < piecesStr.size(); i += 20)
 	{
 		Piece piece;
-		piece.done = false;
+		piece.finished = false;
 		piece.priority = 0;
 		memcpy(&piece.hash[0], piecesStr.c_str() + i, 20);
 		this->pieces.push_back(piece);
 	}
+	// this->bitfield.reserve(this->pieces.size()); // DOESNT WORK. WHY???
+	this->bitfield=boost::dynamic_bitset<uint8_t>(this->pieces.size());
+	// std::clog << "\n\n\n" << this->bitfield.capacity() << "\n\n\n" << std::endl;
 
 	mkdir(downloadDir.c_str(), 0700); // TODO: ADD ERROR HANDLING
 	chdir(downloadDir.c_str());
@@ -162,7 +168,7 @@ TrackerQuery Torrent::buildTrackerQuery(TrackerEvent event) const // MOVE THIS F
 
 	for (size_t i = 0; i < pieces.size(); ++i)
 	{
-		if (pieces[i].done)
+		if (pieces[i].finished)
 		{
 			q.downloaded += pieceSize(i);
 		}
@@ -179,9 +185,18 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	{
 		return DownloadError::TRACKER_QUERY_FAILURE;
 	}
-
+	if(this->acceptor == nullptr)
+	{
+		this->acceptor = new Acceptor(port);
+	}
 	while (completedPieces != piecesNeeded)
 	{
+		// acceptor->accept(
+		// 	[this] (const std::shared_ptr<Connection> &conn) {
+		// 		auto peer = std::make_shared<Peer>(conn, this);
+		// 		// peer->verify();
+		// 	}
+		// );
 		if (mainTracker->isNextRequestDue())
 		{
 			mainTracker->query(buildTrackerQuery(TrackerEvent::NONE));
@@ -311,7 +326,7 @@ void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)
 	for (size_t i = 0; i < pieces.size(); ++i)
 	{
 		Piece *p = &pieces[i];
-		if (p->done || !peer->hasPiece(i))
+		if (p->finished || !peer->hasPiece(i))
 			continue;
 
 		if (!p->priority)
@@ -333,6 +348,14 @@ void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)
 		peer->sendPieceRequest(index);
 	}
 }
+
+std::vector<uint8_t> Torrent::getRawBitfield() const
+{
+	std::vector<uint8_t> rBitfield;
+    boost::to_block_range(bitfield, std::back_inserter(rBitfield));
+	return rBitfield;
+}
+
 
 size_t Torrent::calculateETA() const{
     // calculate remaining size to download
@@ -389,7 +412,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 		return;
 	}
 
-	pieces[index].done = true;
+	pieces[index].finished = true;
 	downloadedBytes += pieceData.size();
 	++completedPieces;
 	const uint8_t *data = &pieceData[0];
@@ -399,6 +422,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	fseek(file.fp, beginPos - file.begin, SEEK_SET);
 	size_t wrote = fwrite(data, 1, size, file.fp);
 
+	this->bitfield.set(index);
 	for (const std::shared_ptr<Peer> &peer : activePeers)
 	{
 		peer->sendHave(index);
@@ -408,7 +432,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", "
 			  << "Hash miss: " << hashMisses << ")"
 			  << std::endl
-			  << name << ": Download speed: " << getDownloadSpeed() << " Mbps"
+			  << name << ": Download speed: " << getDownloadSpeed() << " MB/s"
 			  << ", ETA: " << formatTime(calculateETA())
 			  << std::endl;
 }

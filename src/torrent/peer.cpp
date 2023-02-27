@@ -4,9 +4,19 @@
 #include <iostream>
 
 Peer::Peer(Torrent *t)
-	: torrent(t)
+	: torrent(t),
+	  state(4)
 {
 	conn = std::make_shared<Connection>(); // https://stackoverflow.com/a/5558955/18301773
+	// state = boost::dynamic_bitset<>(4);
+	state.set(AM_CHOKING);
+	state.set(PEER_CHOKED);
+}
+
+Peer::Peer(Torrent* t, std::shared_ptr<Connection>& conn)
+	: torrent(t),
+	  state(4)
+{
 	state.set(AM_CHOKING);
 	state.set(PEER_CHOKED);
 }
@@ -54,14 +64,41 @@ void Peer::connect(const std::string &ip, const std::string &port)
 											   return me->handleError("info hash/protocol type mismatch");
 
 										   std::string peerId((const char *)&peerHandshake[48], 20);
-										   if (!peerId.empty() && peerId != peerId)
+										   if (!peerId.empty() && peerId != peerId) // ?????
 											   return me->handleError("unverified");
 
 										   peerId = peerId;
-										   (me->torrent)->addPeer(me);
+										   (me->torrent)->addPeer(me->shared_from_this());
 										   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
 									   });
 				  });
+}
+
+void Peer::authenticate()
+{
+	const uint8_t *myHandshake = torrent->getHandshake();
+	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
+	conn->read(68,
+		[me=shared_from_this(), myHandshake] (const uint8_t *peerHandshake, size_t size)
+		{
+			if (size != 68
+				|| (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0)
+				|| memcmp(&myHandshake[28], &peerHandshake[28], 20) != 0)
+				return me->handleError("info hash/protocol type mismatch");
+
+			std::string peerId((const char *)&peerHandshake[48], 20);
+			if (!peerId.empty() && peerId != peerId) // ??????
+				return me->handleError("unverified");
+
+			peerId = peerId;
+			(me->conn)->write(myHandshake, 68);
+			(me->torrent)->addPeer(me);
+			// sendBitfield(peer);
+			
+			std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
+			(me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
+		}
+	);
 }
 
 void Peer::handle(const uint8_t *data, size_t size)
@@ -309,6 +346,16 @@ void Peer::sendHave(uint32_t index)
 	conn->write(out);
 }
 
+void Peer::sendBitfield(std::vector<uint8_t> rBitfield)
+{
+	OutgoingMessage out(5 + rBitfield.size());
+	out.addU32(1UL + rBitfield.size()); // length
+	out.addU8(BITFIELD);
+	out.addCustom(rBitfield.data(), rBitfield.size());
+
+	conn->write(out);
+}
+
 void Peer::sendPieceRequest(uint32_t index)
 {
 	sendInterested();
@@ -336,7 +383,7 @@ void Peer::sendPieceBlock(uint32_t index, uint32_t begin, uint8_t *block, uint32
 	out.addU8((uint8_t)PIECE_BLOCK);
 	out.addU32(index);
 	out.addU32(begin);
-	out.addBytes(block, length);
+	out.addCustom(block, length);
 
 	conn->write(out);
 }
