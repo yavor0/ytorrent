@@ -334,9 +334,9 @@ void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)
 	}
 }
 
-size_t Torrent::calculateETA() const{// FIX
+size_t Torrent::calculateETA() const{
     // calculate remaining size to download
-    size_t remaining_size = totalSize - (getDownloadedPieceCount()*pieceLength);
+    size_t remaining_size = totalSize - downloadedBytes;
 
     // calculate ETA in seconds
     double eta_sec = static_cast<double>(remaining_size) / (getDownloadSpeed()*1000000.0);
@@ -344,29 +344,30 @@ size_t Torrent::calculateETA() const{// FIX
     return static_cast<size_t>(eta_sec + 0.5);
 }
 
-size_t Torrent::getDownloadedPieceCount() const
-{
-	size_t downloaded = 0;
-	for (size_t i = 0; i < pieces.size(); ++i)
-	{
-		if (pieces[i].done)
-		{
-			downloaded += pieceSize(i);
-		}
-	}
-	return downloaded;
-}
 
 double Torrent::getDownloadSpeed() const
 {
     auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startDownloadTime).count();
-    size_t downloaded = getDownloadedPieceCount();
     if (elapsedSec == 0)
         return 0.0;
 
-    double speed = (double)(downloaded / elapsedSec);
-    return speed / 1000000.0;
+    double speed = (double)(downloadedBytes / elapsedSec);
+    return speed / 1000000;
 }
+
+int64_t Torrent::pieceSize(size_t pieceIndex) const
+{
+	// Last piece can be different in size
+	if (pieceIndex == pieces.size() - 1)
+	{
+		int64_t r = totalSize % pieceLength;
+		if (r != 0)
+			return r;
+	}
+
+	return pieceLength;
+}
+
 
 void Torrent::handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error)
 {
@@ -408,7 +409,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 			  << "Hash miss: " << hashMisses << ")"
 			  << std::endl
 			  << name << ": Download speed: " << getDownloadSpeed() << " Mbps"
-			//   << ", ETA: " << calculateETA() << " seconds"
+			  << ", ETA: " << calculateETA() << " seconds"
 			  << std::endl;
 }
 
@@ -466,17 +467,4 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t ind
 	peer->sendPieceBlock(index, begin, block, length);
 	uploadedBytes += length;
 	delete block;
-}
-
-int64_t Torrent::pieceSize(size_t pieceIndex) const
-{
-	// Last piece can be different in size
-	if (pieceIndex == pieces.size() - 1)
-	{
-		int64_t r = totalSize % pieceLength;
-		if (r != 0)
-			return r;
-	}
-
-	return pieceLength;
 }

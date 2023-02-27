@@ -68,7 +68,6 @@ private:
 	inline size_t getTotalPieces() const { return pieces.size(); }
 	inline size_t getCompletedPieces() const { return completedPieces; }
 	size_t calculateETA() const;
-	size_t getDownloadedPieceCount() const;
 	double getDownloadSpeed() const;
 
 	TrackerQuery buildTrackerQuery(TrackerEvent event) const;
