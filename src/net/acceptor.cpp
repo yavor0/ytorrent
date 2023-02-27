@@ -3,7 +3,7 @@
 Acceptor::Acceptor(uint16_t port)
 	: tcpAcceptor(g_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port))
 {
-	tcpAcceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+	tcpAcceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true)); // https://prnt.sc/F8LJGCuHN8th
 }
 
 Acceptor::~Acceptor()
@@ -11,7 +11,6 @@ Acceptor::~Acceptor()
 	tcpAcceptor.cancel();
 	tcpAcceptor.close();
 }
-
 
 void Acceptor::accept(const AcceptCallBack &acceptCB)
 {

@@ -1,7 +1,7 @@
 #include "connection.hpp"
 
 asio::io_context g_io_context;
-boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard(g_io_context.get_executor());
+boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard(g_io_context.get_executor());
 
 Connection::Connection() : resolver(g_io_context),
 						   socket(g_io_context)
@@ -21,7 +21,7 @@ void Connection::start()
 void Connection::stop()
 {
 	// g_io_context.stop(); // https://stackoverflow.com/a/18555384/18301773
-	work_guard.reset();
+	g_work_guard.reset();
 }
 
 void Connection::connect(const std::string &host, const std::string &port, const ConnectCallback &cb)
