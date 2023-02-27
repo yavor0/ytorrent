@@ -13,7 +13,7 @@ Peer::Peer(Torrent *t)
 	state.set(PEER_CHOKED);
 }
 
-Peer::Peer(Torrent* t, std::shared_ptr<Connection>& conn)
+Peer::Peer(Torrent *t, std::shared_ptr<Connection> &conn)
 	: torrent(t),
 	  state(4)
 {
@@ -23,12 +23,13 @@ Peer::Peer(Torrent* t, std::shared_ptr<Connection>& conn)
 
 Peer::~Peer()
 {
-	std::clog << "\n\n\n\n Destructor CALLED \n\n\n\n" << std::endl;
+	std::clog << "\n\n\n\n Destructor CALLED \n\n\n\n"
+			  << std::endl;
 	// for (Piece *p : pieceQueue)
 	// {
 	// 	delete p;
 	// }
-	for(size_t i=0;i<pieceQueue.size();i++)
+	for (size_t i = 0; i < pieceQueue.size(); i++)
 	{
 		delete pieceQueue[i];
 	}
@@ -36,7 +37,8 @@ Peer::~Peer()
 
 void Peer::simulateDestructor()
 {
-	std::clog << "\n\n\n\n simulateDestructor CALLED \n\n\n\n" << std::endl;
+	std::clog << "\n\n\n\n simulateDestructor CALLED \n\n\n\n"
+			  << std::endl;
 	for (Piece *p : pieceQueue)
 	{
 		delete p;
@@ -79,26 +81,23 @@ void Peer::authenticate()
 	const uint8_t *myHandshake = torrent->getHandshake();
 	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
 	conn->read(68,
-		[me=shared_from_this(), myHandshake] (const uint8_t *peerHandshake, size_t size)
-		{
-			if (size != 68
-				|| (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0)
-				|| memcmp(&myHandshake[28], &peerHandshake[28], 20) != 0)
-				return me->handleError("info hash/protocol type mismatch");
+			   [me = shared_from_this(), myHandshake](const uint8_t *peerHandshake, size_t size)
+			   {
+				   if (size != 68 || (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&myHandshake[28], &peerHandshake[28], 20) != 0)
+					   return me->handleError("info hash/protocol type mismatch");
 
-			std::string peerId((const char *)&peerHandshake[48], 20);
-			if (!peerId.empty() && peerId != peerId) // ??????
-				return me->handleError("unverified");
+				   std::string peerId((const char *)&peerHandshake[48], 20);
+				   if (!peerId.empty() && peerId != peerId) // ??????
+					   return me->handleError("unverified");
 
-			peerId = peerId;
-			(me->conn)->write(myHandshake, 68);
-			(me->torrent)->addPeer(me);
-			// sendBitfield(peer);
-			
-			std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
-			(me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
-		}
-	);
+				   peerId = peerId;
+				   (me->conn)->write(myHandshake, 68);
+				   (me->torrent)->addPeer(me);
+				   // sendBitfield(peer);
+
+				   std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
+				   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
+			   });
 }
 
 void Peer::handle(const uint8_t *data, size_t size)
@@ -121,15 +120,15 @@ void Peer::handle(const uint8_t *data, size_t size)
 	}
 }
 
-void Peer::handleMessage(MessageID messageType, IncomingMessage in)
+void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 {
-	size_t payloadSize = in.getSize();
+	size_t msgSize = inMsg.getSize();
 
-	switch (messageType)
+	switch (messageID)
 	{
 	case CHOKE:
 	{
-		if (payloadSize != 0)
+		if (msgSize != 0)
 			return handleError("invalid choke-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "choke");
@@ -138,7 +137,7 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case UNCHOKE:
 	{
-		if (payloadSize != 0)
+		if (msgSize != 0)
 			return handleError("invalid unchoke-message size");
 
 		state.reset(PEER_CHOKED);
@@ -153,7 +152,7 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case INTERESTED:
 	{
-		if (payloadSize != 0)
+		if (msgSize != 0)
 			return handleError("invalid interested-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "interested");
@@ -171,7 +170,7 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case NOT_INTERESTED:
 	{
-		if (payloadSize != 0)
+		if (msgSize != 0)
 			return handleError("invalid not-interested-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "not interested");
@@ -180,13 +179,13 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case HAVE:
 	{
-		if (payloadSize != 4)
+		if (msgSize != 4)
 			return handleError("invalid have-message size");
 
-		uint32_t p = in.extractNextU32();
+		uint32_t p = inMsg.extractNextU32();
 		if (!hasPiece(p))
 		{
-			pieces.push_back(p);
+			hasPieceIndexes.push_back(p);
 			// torrent->requestPiece(shared_from_this()); // ?????????
 		}
 
@@ -194,20 +193,22 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case BITFIELD:
 	{
-		if (payloadSize < 1)
+		if (msgSize < 1)
 			return handleError("invalid bitfield-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "bit field");
-		uint8_t *buf = in.getBuffer();
-		for (size_t i = 0; i < payloadSize; ++i) {
-			for (uint8_t x = 0; x < 8; ++x) {
-				if (buf[i] & (1 << (7 - x))) {
-					size_t index = i * 8 + x;
+		uint8_t *raw = inMsg.getBuffer();
+		for (size_t i = 0; i < msgSize; ++i)
+		{
+			for (uint8_t j = 0; j < 8; ++j)
+			{
+				if (raw[i] & (1 << (7 - j)))
+				{
+					size_t index = i * 8 + j;
 					if (index < torrent->getTotalPieces())
 					{
-						pieces.push_back(index);
+						hasPieceIndexes.push_back(index);
 					}
-						
 				}
 			}
 		}
@@ -220,7 +221,7 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case REQUEST:
 	{
-		if (payloadSize != 12)
+		if (msgSize != 12)
 			return handleError("invalid request-message size");
 
 		if (!state.test(PEER_INTERESTED))
@@ -230,14 +231,14 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 			return handleError("peer requested piece while choked");
 
 		uint32_t index, begin, length;
-		index = in.extractNextU32();
-		begin = in.extractNextU32();
-		length = in.extractNextU32();
+		index = inMsg.extractNextU32();
+		begin = inMsg.extractNextU32();
+		length = inMsg.extractNextU32();
 
 		if (length > maxRequestSize)
 			return handleError("peer requested piece of size " + bytesToHumanReadable(length, true) + " which is beyond our max request size");
 
-		if(!torrent->pieceDone(index))
+		if (!torrent->pieceDone(index))
 		{
 			break;
 		}
@@ -248,16 +249,16 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case PIECE_BLOCK:
 	{
-		if (payloadSize < 9)
+		if (msgSize < 9)
 			return handleError("invalid pieceblock-message size");
 
 		uint32_t index, begin;
-		index = in.extractNextU32();
-		begin = in.extractNextU32();
+		index = inMsg.extractNextU32();
+		begin = inMsg.extractNextU32();
 
-		payloadSize -= 8; // deduct index and begin
-		if (payloadSize <= 0 || payloadSize > maxRequestSize)
-			return handleError("received too big piece block of size " + bytesToHumanReadable(payloadSize, true));
+		msgSize -= 8; // deduct index and begin
+		if (msgSize <= 0 || msgSize > maxRequestSize)
+			return handleError("received too big piece block of size " + bytesToHumanReadable(msgSize, true));
 
 		auto it = std::find_if(pieceQueue.begin(), pieceQueue.end(),
 							   [index](const Piece *piece)
@@ -279,19 +280,19 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 		}
 		else
 		{
-			piece->blocks[blockIndex].size = payloadSize;
-			piece->blocks[blockIndex].data = in.getBuffer(payloadSize);
+			piece->blocks[blockIndex].size = msgSize;
+			piece->blocks[blockIndex].data = inMsg.getBuffer(msgSize);
 			piece->haveBlocks++;
 
 			if (piece->haveBlocks == piece->totalBlocks)
 			{
 				std::vector<uint8_t> pieceData;
 				pieceData.reserve(piece->totalBlocks * maxRequestSize); // just a prediction could be bit less
-				for (size_t x = 0; x < piece->totalBlocks; ++x)
+				for (size_t i = 0; i < piece->totalBlocks; i++)
 				{
-					for (size_t y = 0; y < piece->blocks[x].size; ++y)
+					for (size_t j = 0; j < piece->blocks[i].size; j++)
 					{
-						pieceData.push_back(piece->blocks[x].data[y]);
+						pieceData.push_back(piece->blocks[i].data[j]);
 					}
 				}
 
@@ -311,13 +312,13 @@ void Peer::handleMessage(MessageID messageType, IncomingMessage in)
 	}
 	case CANCEL:
 	{
-		if (payloadSize != 12)
+		if (msgSize != 12)
 			return handleError("invalid cancel-message size");
 
 		uint32_t index, begin, length;
-		index = in.extractNextU32();
-		begin = in.extractNextU32();
-		length = in.extractNextU32();
+		index = inMsg.extractNextU32();
+		begin = inMsg.extractNextU32();
+		length = inMsg.extractNextU32();
 
 		torrent->handlePeerDebug(shared_from_this(), "cancel");
 		break;
@@ -379,7 +380,7 @@ void Peer::sendPieceRequest(uint32_t index)
 void Peer::sendPieceBlock(uint32_t index, uint32_t begin, uint8_t *block, uint32_t length)
 {
 	OutgoingMessage out(13 + length);
-	out.addU32(9UL + length);	// length
+	out.addU32(9UL + length); // length
 	out.addU8((uint8_t)PIECE_BLOCK);
 	out.addU32(index);
 	out.addU32(begin);

@@ -349,7 +349,7 @@ void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)
 	}
 }
 
-std::vector<uint8_t> Torrent::getRawBitfield() const
+std::vector<uint8_t> Torrent::getRawBitfield() const // https://stackoverflow.com/a/9081167/18301773
 {
 	std::vector<uint8_t> rBitfield;
     boost::to_block_range(bitfield, std::back_inserter(rBitfield));
@@ -435,6 +435,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 			  << name << ": Download speed: " << getDownloadSpeed() << " MB/s"
 			  << ", ETA: " << formatTime(calculateETA())
 			  << std::endl;
+	// std::clog << "\n\n\n" << this->bitfield << "\n\n\n" << std::endl;
 }
 
 void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t index, uint32_t begin, uint32_t length)

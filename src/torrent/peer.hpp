@@ -60,7 +60,7 @@ private:
 		Block *blocks;
 	};
 
-	std::vector<size_t> pieces;
+	std::vector<size_t> hasPieceIndexes;
 	std::vector<Piece *> pieceQueue;
 	std::string peerId;
 	Torrent* torrent;
@@ -81,9 +81,9 @@ private:
 	void sendCancel(uint32_t index, uint32_t begin, uint32_t size);
 
 	void requestPiece(size_t pieceIndex);
-	inline std::vector<size_t> getPieces() const { return pieces; }
+	inline std::vector<size_t> getPieces() const { return hasPieceIndexes; }
 
-	inline bool hasPiece(size_t index) { return std::find(pieces.begin(), pieces.end(), index) != pieces.end(); }
+	inline bool hasPiece(size_t index) { return std::find(hasPieceIndexes.begin(), hasPieceIndexes.end(), index) != hasPieceIndexes.end(); }
 
 	void authenticate();
 public:
