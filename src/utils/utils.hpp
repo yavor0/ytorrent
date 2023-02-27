@@ -25,7 +25,7 @@ std::string urlEncode(const std::string& url);
 std::string parseIp(uint32_t ip);
 std::string bytesToHumanReadable(uint32_t bytes, bool si);
 std::string getcwd();
-
+std::string formatTime(size_t seconds);
 bool nodeExists(const std::string& node);
 
 #endif

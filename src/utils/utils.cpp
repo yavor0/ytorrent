@@ -135,7 +135,22 @@ std::string getcwd()
 	throw std::runtime_error("Cannot determine the current path; the path is apparently unreasonably long");
 }
 
-
+std::string formatTime(size_t seconds)
+{
+    size_t minutes = seconds / 60;
+    size_t remainingSeconds = seconds % 60;
+    std::string minutesStr = std::to_string(minutes);
+    std::string secondsStr = std::to_string(remainingSeconds);
+    if (minutes < 10)
+    {
+        minutesStr = "0" + minutesStr;
+    }
+    if (remainingSeconds < 10)
+    {
+        secondsStr = "0" + secondsStr;
+    }
+    return minutesStr + ":" + secondsStr;
+}
 bool nodeExists(const std::string &node)
 {
 	struct stat st;

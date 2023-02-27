@@ -409,7 +409,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 			  << "Hash miss: " << hashMisses << ")"
 			  << std::endl
 			  << name << ": Download speed: " << getDownloadSpeed() << " Mbps"
-			  << ", ETA: " << calculateETA() << " seconds"
+			  << ", ETA: " << formatTime(calculateETA())
 			  << std::endl;
 }
 
