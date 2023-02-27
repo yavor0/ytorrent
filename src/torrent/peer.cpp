@@ -13,8 +13,9 @@ Peer::Peer(Torrent *t)
 	state.set(PEER_CHOKED);
 }
 
-Peer::Peer(Torrent *t, std::shared_ptr<Connection> &conn)
+Peer::Peer(Torrent *t, const std::shared_ptr<Connection> &conn)
 	: torrent(t),
+	  conn(conn),
 	  state(4)
 {
 	state.set(AM_CHOKING);
@@ -66,8 +67,8 @@ void Peer::connect(const std::string &ip, const std::string &port)
 											   return me->handleError("info hash/protocol type mismatch");
 
 										   std::string peerId((const char *)&peerHandshake[48], 20);
-										   if (!peerId.empty() && peerId != peerId) // ?????
-											   return me->handleError("unverified");
+										//    if (!peerId.empty() && peerId != peerId) // ??????
+										// 	   return me->handleError("unverified");
 
 										   peerId = peerId;
 										   (me->torrent)->addPeer(me->shared_from_this());
@@ -87,15 +88,12 @@ void Peer::authenticate()
 					   return me->handleError("info hash/protocol type mismatch");
 
 				   std::string peerId((const char *)&peerHandshake[48], 20);
-				   if (!peerId.empty() && peerId != peerId) // ??????
-					   return me->handleError("unverified");
-
 				   peerId = peerId;
 				   (me->conn)->write(myHandshake, 68);
 				   (me->torrent)->addPeer(me);
-				   // sendBitfield(peer);
+				   me->sendBitfield((me->torrent)->getRawBitfield());
 
-				   std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
+				   std::clog << "\n\n" << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << "\n\n" << std::endl;
 				   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
 			   });
 }

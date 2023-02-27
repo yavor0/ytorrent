@@ -88,7 +88,7 @@ private:
 	void authenticate();
 public:
 	Peer(Torrent* t);
-	Peer(Torrent* t, std::shared_ptr<Connection>& conn);
+	Peer(Torrent* t, const std::shared_ptr<Connection>& conn);
 	~Peer(); // this is noexcept
 
 	void simulateDestructor();

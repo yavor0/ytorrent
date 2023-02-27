@@ -191,12 +191,15 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	}
 	while (completedPieces != piecesNeeded)
 	{
-		// acceptor->accept(
-		// 	[this] (const std::shared_ptr<Connection> &conn) {
-		// 		auto peer = std::make_shared<Peer>(conn, this);
-		// 		// peer->verify();
-		// 	}
-		// );
+		// I want to kms looking at this shit
+		// i dont even know if it works
+		// plese rewrite to something similar to https://www.boost.org/doc/libs/1_71_0/doc/html/boost_asio/tutorial/tutdaytime7.html
+		acceptor->accept(
+			[this] (const std::shared_ptr<Connection>& conn) {
+				auto peer = std::make_shared<Peer>(this, conn);
+				peer->authenticate();
+			}
+		);
 		if (mainTracker->isNextRequestDue())
 		{
 			mainTracker->query(buildTrackerQuery(TrackerEvent::NONE));

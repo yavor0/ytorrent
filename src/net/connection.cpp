@@ -2,7 +2,7 @@
 
 asio::io_context g_io_context;
 boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard(g_io_context.get_executor());
-
+// https://www.reddit.com/r/cpp/comments/jdy2gd/comment/g9bbflz/?utm_source=share&utm_medium=web2x&context=3
 Connection::Connection() : resolver(g_io_context),
 						   socket(g_io_context)
 {
@@ -122,6 +122,7 @@ void Connection::write(const uint8_t *data, size_t bytes)
 
 void Connection::handleError(const boost::system::error_code &error)
 {
+	// check for operation aborted!!! https://www.reddit.com/r/cpp/comments/jdy2gd/asio_users_how_do_you_deal_with_cancellation/
 	if (this->errorCB)
 	{
 		this->errorCB(error.message());
