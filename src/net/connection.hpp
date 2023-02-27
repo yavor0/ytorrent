@@ -27,7 +27,7 @@ private:
 	asio::streambuf inputStream;
 
 	void handleError(const boost::system::error_code &e);
-
+	friend class Acceptor;
 public:
 	Connection();
 	~Connection();
