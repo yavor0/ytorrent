@@ -7,6 +7,7 @@ add_executable(${PROJECT_NAME}
     src/torrent/peer.cpp
     src/torrent/torrent.cpp
     src/torrent/tracker.cpp
+    src/net/acceptor.cpp
     src/net/connection.cpp
     src/utils/utils.cpp
     main.cpp
