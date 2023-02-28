@@ -18,6 +18,7 @@ class Torrent
 private:
 	struct File
 	{
+		File() : path(""), fp(nullptr), begin(0), length(0) {}
 		std::string path;
 		FILE *fp;
 		int64_t begin; // offset of which the piece(s) begin

@@ -110,12 +110,8 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 	{
 		int64_t length = ((*infoDict)[BString::create("length")])->as<BInteger>()->value();
 
-		File file = {
-			.path = name.c_str(),
-			.fp = nullptr,
-			.begin = 0,
-			.length = length};
-
+		File file;
+		
 		if (!nodeExists(name.c_str())) // BRUH
 		{
 			file.fp = fopen(name.c_str(), "wb+");
