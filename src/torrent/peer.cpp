@@ -67,8 +67,8 @@ void Peer::connect(const std::string &ip, const std::string &port)
 											   return me->handleError("info hash/protocol type mismatch");
 
 										   std::string peerId((const char *)&peerHandshake[48], 20);
-										//    if (!peerId.empty() && peerId != peerId) // ??????
-										// 	   return me->handleError("unverified");
+										   //    if (!peerId.empty() && peerId != peerId) // ??????
+										   // 	   return me->handleError("unverified");
 
 										   peerId = peerId;
 										   (me->torrent)->addPeer(me->shared_from_this());
@@ -91,9 +91,10 @@ void Peer::authenticate()
 				   peerId = peerId;
 				   (me->conn)->write(myHandshake, 68);
 				   (me->torrent)->addPeer(me);
+
 				   me->sendBitfield((me->torrent)->getRawBitfield());
 
-				   std::clog << "\n\n" << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << "\n\n" << std::endl;
+				   std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
 				   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
 			   });
 }
@@ -241,7 +242,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			break;
 		}
 
-		torrent->handlePeerDebug(shared_from_this(), "\n\n\n\nrequested piece block of length " + bytesToHumanReadable(length, true) + "\n\n\n\n");
+		torrent->handlePeerDebug(shared_from_this(), "requested piece block of length " + bytesToHumanReadable(length, true));
 		torrent->handleRequestBlock(shared_from_this(), index, begin, length);
 		break;
 	}
@@ -347,6 +348,7 @@ void Peer::sendHave(uint32_t index)
 
 void Peer::sendBitfield(std::vector<uint8_t> rBitfield)
 {
+	// std::clog << "\n\n\n" << rBitfield.size() << "\n\n\n" << std::endl;
 	OutgoingMessage out(5 + rBitfield.size());
 	out.addU32(1UL + rBitfield.size()); // length
 	out.addU8(BITFIELD);

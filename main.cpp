@@ -11,10 +11,10 @@
 
 int main(int argc, char *argv[])
 {
-	int startport = 6881;
+	int startport = 63333;
 	std::string dldir = "Torrents";
 	std::string file(argv[1]);
-	std::unique_ptr<Torrent> t = std::make_unique<Torrent>();
+	Torrent* t = new Torrent();
 	int completed = 0;
 
 	if (!t->parseFile(file, dldir))
@@ -30,6 +30,8 @@ int main(int argc, char *argv[])
 	Torrent::DownloadError error = t->download(startport++);
 	std::clog << t->getName() << ": Downloaded: " << bytesToHumanReadable(t->getDownloadedBytes(), true) << std::endl;
 	std::clog << t->getName() << ": Uploaded:   " << bytesToHumanReadable(t->getUploadedBytes(), true) << std::endl;
+	t->seed(startport);
+
 	Connection::stop();
 	return 0;
 }

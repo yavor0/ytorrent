@@ -9,7 +9,7 @@ public:
 	Acceptor(uint16_t port);
 	~Acceptor();
 
-	void initiateAcceptLoop(const AcceptCallBack &acceptCB);
+	void initiateAsyncAcceptLoop(const AcceptCallBack &acceptCB);
 	bool isStarted() const;
 
 private:
