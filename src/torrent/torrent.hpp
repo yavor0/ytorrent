@@ -61,7 +61,7 @@ private:
 	bool validateTracker(const std::string &url, const TrackerQuery &r, uint16_t myPort);
 	void connectToPeers(const uint8_t *peers, size_t size);
 	void requestPiece(const std::shared_ptr<Peer> &peer, size_t pieceIndex);
-	void requestPiece(const std::shared_ptr<Peer> &peer);
+	void initiatePieceRequesting(const std::shared_ptr<Peer> &peer);
 	int64_t pieceSize(size_t pieceIndex) const;
 	inline bool pieceDone(size_t pieceIndex) const { return pieces[pieceIndex].finished; }
 

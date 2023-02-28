@@ -121,6 +121,10 @@ void Connection::write(const uint8_t *data, size_t bytes)
 void Connection::handleError(const boost::system::error_code &error)
 {
 	// check for operation aborted!!! https://www.reddit.com/r/cpp/comments/jdy2gd/asio_users_how_do_you_deal_with_cancellation/
+	if(error == asio::error::operation_aborted)
+	{
+		return;
+	}
 	if (this->errorCB)
 	{
 		this->errorCB(error.message());
@@ -130,6 +134,7 @@ void Connection::handleError(const boost::system::error_code &error)
 		close();
 	}
 }
+
 uint32_t Connection::getIP() const
 {
 	if (!isConnected())
@@ -141,7 +146,7 @@ uint32_t Connection::getIP() const
 	const asio::ip::tcp::endpoint ip = this->socket.remote_endpoint(error);
 	if (!error)
 	{
-		return asio::detail::socket_ops::host_to_network_long(ip.address().to_v4().to_ulong());
+		return ip.address().to_v4().to_ulong();
 	}
 
 	return 0;

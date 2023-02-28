@@ -45,6 +45,7 @@ public:
 
 	std::string getIPString() const { return parseIp(getIP()); }
 	uint32_t getIP() const;
+	uint8_t getPort() const { return socket.remote_endpoint().port();}
 
 	void setErrorCallback(const ErrorCallback &errorCB) { this->errorCB = errorCB; }
 };

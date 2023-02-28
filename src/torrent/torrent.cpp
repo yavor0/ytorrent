@@ -191,12 +191,11 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 		this->acceptor = new Acceptor(port);
 	}
 
-	// incoming connections
+	// async accept incoming connections
 	acceptor->initiateAsyncAcceptLoop(
 		[this](const std::shared_ptr<Connection> &conn)
 		{
 			auto peer = std::make_shared<Peer>(this, conn);
-			std::clog << "\n\n\n!!Incoming!!\n\n\n" << std::endl;
 			peer->authenticate();
 		});
 
@@ -534,11 +533,6 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t pIn
 	int read = fread(&block[writePos], 1, length, file.fp);
 	if (read <= 0)
 	{
-		if (feof(file.fp))
-          std::cerr << "Error reading test.bin: unexpected end of file\n" << std::endl;
-       else if (ferror(file.fp)) {
-           perror("Error reading test.bin");
-       }
 		std::cerr << name << ": handleRequestBlock(): unable to read from: " << file.path.c_str() << std::endl;
 		return;
 	}

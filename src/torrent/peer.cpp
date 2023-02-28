@@ -36,15 +36,6 @@ Peer::~Peer()
 	}
 }
 
-void Peer::simulateDestructor()
-{
-	std::clog << "\n\n\n\n simulateDestructor CALLED \n\n\n\n"
-			  << std::endl;
-	for (Piece *p : pieceQueue)
-	{
-		delete p;
-	}
-}
 
 void Peer::disconnect()
 {
@@ -94,7 +85,7 @@ void Peer::authenticate()
 
 				   me->sendBitfield((me->torrent)->getRawBitfield());
 
-				   std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ": connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
+				   std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ":" << std::to_string((me->conn)->getPort())  << " - connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
 				   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
 			   });
 }
@@ -157,7 +148,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		torrent->handlePeerDebug(shared_from_this(), "interested");
 		state.set(PEER_INTERESTED);
 
-		if (state.test(AM_CHOKING))
+		if (state.test(AM_CHOKING)) // literally just ask bro
 		{
 			// 4-byte length, 1-byte packet type
 			static const uint8_t unchoke[5] = {0, 0, 0, 1, UNCHOKE};
@@ -214,7 +205,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 
 		if (!torrent->isFullyDownloaded())
 		{
-			torrent->requestPiece(shared_from_this());
+			torrent->initiatePieceRequesting(shared_from_this());
 		}
 		break;
 	}
@@ -242,7 +233,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			break;
 		}
 
-		torrent->handlePeerDebug(shared_from_this(), "requested piece block of length " + bytesToHumanReadable(length, true));
+		// torrent->handlePeerDebug(shared_from_this(), "requested piece block of length " + bytesToHumanReadable(length, true));
 		torrent->handleRequestBlock(shared_from_this(), index, begin, length);
 		break;
 	}
@@ -299,11 +290,11 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 				pieceQueue.erase(it);
 				delete piece;
 
-				// We have to do this here, if we do it inside of handlePieceCompleted
-				// pieceQueue will fail us due to sendPieceRequest changing position
+				// Have to do this here, if its done inside of handlePieceCompleted
+				// pieceQueue will fail due to sendPieceRequest changing position
 				if (torrent->getCompletedPieces() != torrent->getTotalPieces())
 				{
-					torrent->requestPiece(shared_from_this());
+					torrent->initiatePieceRequesting(shared_from_this());
 				}
 			}
 		}
@@ -362,7 +353,7 @@ void Peer::sendPieceRequest(uint32_t index)
 	sendInterested();
 
 	uint32_t pieceLength = torrent->pieceSize(index);
-	size_t numBlocks = (int)(ceil(double(pieceLength) / maxRequestSize));
+	size_t numBlocks = (int)(ceil(double(pieceLength) / maxRequestSize)); // https://wiki.theory.org/BitTorrentSpecification#Notes
 
 	Piece *piece = new Piece();
 	piece->index = index;
@@ -371,7 +362,7 @@ void Peer::sendPieceRequest(uint32_t index)
 	piece->blocks = new Block[numBlocks];
 
 	pieceQueue.push_back(piece);
-	if (!state.test(PEER_CHOKED))
+	if (!state.test(PEER_CHOKED)) // bro choked me in the meantime
 	{
 		requestPiece(index);
 	}

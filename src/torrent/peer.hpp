@@ -91,7 +91,6 @@ public:
 	Peer(Torrent* t, const std::shared_ptr<Connection>& conn);
 	~Peer(); // this is noexcept
 
-	void simulateDestructor();
 	inline void setId(const std::string &id) { peerId = id; }
 	inline std::string getStrIp() const { return conn->getIPString(); }
 	inline uint32_t getRawIp() const { return conn->getIP(); }
