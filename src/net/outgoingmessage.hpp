@@ -14,7 +14,9 @@ public:
 	OutgoingMessage(size_t fixedSize = 0) : writeIndex(0)
 	{
 		if (fixedSize != 0)
+		{
 			dataBuffer.reserve(fixedSize);
+		}
 	}
 
 	~OutgoingMessage()

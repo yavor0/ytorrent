@@ -64,8 +64,8 @@ private:
 	std::vector<Piece *> pieceQueue;
 	std::string peerId;
 	Torrent* torrent;
-	boost::dynamic_bitset<> state;
 	std::shared_ptr<Connection> conn;
+	boost::dynamic_bitset<> state;
 
 	void handle(const uint8_t *data, size_t size);
 	void handleMessage(MessageID messageType, IncomingMessage in);
