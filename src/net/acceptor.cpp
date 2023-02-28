@@ -19,7 +19,7 @@ bool Acceptor::isStarted() const
 	return started;
 }
 
-void Acceptor::initiateAcceptLoop(const AcceptCallBack &acceptCB)
+void Acceptor::initiateAsyncAcceptLoop(const AcceptCallBack &acceptCB)
 {
 	started = true;
 	std::shared_ptr<Connection> conn = std::make_shared<Connection>();
@@ -29,7 +29,7 @@ void Acceptor::initiateAcceptLoop(const AcceptCallBack &acceptCB)
 								 if (!error)
 								 {
 									 acceptCB(conn);
-									 initiateAcceptLoop(acceptCB);
+									 initiateAsyncAcceptLoop(acceptCB);
 								 }
 							 });
 }
