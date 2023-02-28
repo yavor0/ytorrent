@@ -12,7 +12,8 @@
 #include <mutex>
 #include <chrono>
 
-static int64_t maxRequestSize = 16384; // 16KiB initial (per piece)
+// https://stackoverflow.com/questions/11967502/okay-to-declare-static-global-variable-in-h-file
+extern const int64_t MAX_BLOCK_REQUEST_SIZE; // 16KiB initial (per piece)
 class Torrent
 {
 private:

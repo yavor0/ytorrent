@@ -7,6 +7,8 @@
 #include <boost/uuid/detail/sha1.hpp>
 using namespace bencoding;
 
+
+const int64_t MAX_BLOCK_REQUEST_SIZE = 16384; 
 Torrent::Torrent() : acceptor(nullptr),
 					 bitfield(0),
 					 completedPieces(0),

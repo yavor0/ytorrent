@@ -225,7 +225,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		begin = inMsg.extractNextU32();
 		length = inMsg.extractNextU32();
 
-		if (length > maxRequestSize)
+		if (length > MAX_BLOCK_REQUEST_SIZE)
 			return handleError("peer requested piece of size " + bytesToHumanReadable(length, true) + " which is beyond our max request size");
 
 		if (!torrent->pieceDone(index))
@@ -247,7 +247,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		begin = inMsg.extractNextU32();
 
 		msgSize -= 8; // deduct index and begin
-		if (msgSize <= 0 || msgSize > maxRequestSize)
+		if (msgSize <= 0 || msgSize > MAX_BLOCK_REQUEST_SIZE)
 			return handleError("received too big piece block of size " + bytesToHumanReadable(msgSize, true));
 
 		auto it = std::find_if(pieceQueue.begin(), pieceQueue.end(),
@@ -257,7 +257,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			return handleError("received piece " + std::to_string(index) + " which we did not ask for");
 
 		Piece *piece = *it;
-		uint32_t blockIndex = begin / maxRequestSize;
+		uint32_t blockIndex = begin / MAX_BLOCK_REQUEST_SIZE;
 		if (blockIndex >= piece->totalBlocks)
 			return handleError("received too big block index");
 
@@ -277,7 +277,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			if (piece->haveBlocks == piece->totalBlocks)
 			{
 				std::vector<uint8_t> pieceData;
-				pieceData.reserve(piece->totalBlocks * maxRequestSize); // just a prediction could be bit less
+				pieceData.reserve(piece->totalBlocks * MAX_BLOCK_REQUEST_SIZE); // just a prediction could be bit less
 				for (size_t i = 0; i < piece->totalBlocks; i++)
 				{
 					for (size_t j = 0; j < piece->blocks[i].size; j++)
@@ -353,7 +353,7 @@ void Peer::sendPieceRequest(uint32_t index)
 	sendInterested();
 
 	uint32_t pieceLength = torrent->pieceSize(index);
-	size_t numBlocks = (int)(ceil(double(pieceLength) / maxRequestSize)); // https://wiki.theory.org/BitTorrentSpecification#Notes
+	size_t numBlocks = (int)(ceil(double(pieceLength) / MAX_BLOCK_REQUEST_SIZE)); // https://wiki.theory.org/BitTorrentSpecification#Notes
 
 	Piece *piece = new Piece();
 	piece->index = index;
@@ -404,11 +404,11 @@ void Peer::sendCancelRequest(Piece *p)
 {
 	size_t begin = 0;
 	size_t length = torrent->pieceSize(p->index);
-	while (length > maxRequestSize)
+	while (length > MAX_BLOCK_REQUEST_SIZE)
 	{
-		sendCancel(p->index, begin, maxRequestSize);
-		length -= maxRequestSize;
-		begin += maxRequestSize;
+		sendCancel(p->index, begin, MAX_BLOCK_REQUEST_SIZE);
+		length -= MAX_BLOCK_REQUEST_SIZE;
+		begin += MAX_BLOCK_REQUEST_SIZE;
 	}
 	sendCancel(p->index, begin, length);
 }
@@ -434,11 +434,11 @@ void Peer::requestPiece(size_t pieceIndex)
 	size_t begin = 0;
 	size_t length = torrent->pieceSize(pieceIndex);
 
-	while (length > maxRequestSize)
+	while (length > MAX_BLOCK_REQUEST_SIZE)
 	{
-		sendRequest(pieceIndex, begin, maxRequestSize);
-		length -= maxRequestSize;
-		begin += maxRequestSize;
+		sendRequest(pieceIndex, begin, MAX_BLOCK_REQUEST_SIZE);
+		length -= MAX_BLOCK_REQUEST_SIZE;
+		begin += MAX_BLOCK_REQUEST_SIZE;
 	}
 	sendRequest(pieceIndex, begin, length);
 }
