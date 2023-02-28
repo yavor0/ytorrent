@@ -65,15 +65,13 @@ void Connection::close(bool warn)
 		}
 		return;
 	}
-
+	this->socket.close();
 	boost::system::error_code ec;
 	this->socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
 	if (ec && warn && this->errorCB)
 	{
 		this->errorCB(ec.message());
 	}
-
-	this->socket.close();
 }
 
 void Connection::read(size_t bytes, const ReadCallback &rc)

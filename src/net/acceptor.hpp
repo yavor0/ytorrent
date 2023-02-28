@@ -9,9 +9,11 @@ public:
 	Acceptor(uint16_t port);
 	~Acceptor();
 
-	void accept(const AcceptCallBack &acceptCB);
+	void initiateAcceptLoop(const AcceptCallBack &acceptCB);
+	bool isStarted() const;
 
 private:
+	bool started; 
 	asio::ip::tcp::acceptor tcpAcceptor;
 };
 
