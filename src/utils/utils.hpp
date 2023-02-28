@@ -10,6 +10,13 @@
 #include <tuple>
 
 
+enum class ParseResult
+{
+	SUCCESS,
+	CORRUPTED_FILE,
+	FAILED_TO_OPEN
+};
+
 struct UrlMeta
 {
 	std::string protocol;

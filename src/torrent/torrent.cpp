@@ -41,10 +41,16 @@ Torrent::~Torrent()
 	// }
 }
 
-bool Torrent::parseFile(const std::string &fileName, const std::string &downloadDir)
+ParseResult Torrent::parseFile(const std::string &fileName, const std::string &downloadDir)
 {
 	std::shared_ptr<BItem> decodedData;
 	std::ifstream input(fileName);
+	if (!input.is_open())
+	{
+		std::cerr << "Failed to open torrent file: " << fileName << std::endl;
+		return ParseResult::FAILED_TO_OPEN;
+	}
+
 	decodedData = bencoding::decode(input);
 	std::shared_ptr<BDictionary> torrMetaDict = decodedData->as<BDictionary>();
 
@@ -98,7 +104,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 	if (files != nullptr /*i.e. there is more than 1 file*/)
 	{ // TODO: IMPLEMENT
 		std::cerr << "Torrent includes multiple files in it. That functionality is still in development." << std::endl;
-		return false;
+		return ParseResult::CORRUPTED_FILE;
 	}
 	else
 	{
@@ -117,7 +123,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 			{
 				std::cerr << name << ": unable to create " << name << std::endl;
 				chdir("..");
-				return false;
+				return ParseResult::FAILED_TO_OPEN;
 			}
 		}
 		else
@@ -127,7 +133,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 			{
 				std::cerr << name << ": unable to open " << name << std::endl;
 				chdir("..");
-				return false;
+				return ParseResult::FAILED_TO_OPEN;
 			}
 
 			std::clog << name << ": Completed pieces: " << completedPieces << "/" << pieces.size() << std::endl;
@@ -137,7 +143,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 	}
 
 	chdir("..");
-	return true;
+	return ParseResult::SUCCESS;
 }
 
 bool Torrent::checkPieceHash(const uint8_t *data, size_t size, uint32_t index)

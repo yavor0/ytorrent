@@ -17,10 +17,9 @@ int main(int argc, char *argv[])
 	Torrent* t = new Torrent();
 	int completed = 0;
 
-	if (!t->parseFile(file, dldir))
+	if (t->parseFile(file, dldir)!=ParseResult::SUCCESS)
 	{
-		std::clog << file << ": corrupted torrent file" << std::endl;
-		return 0;
+		return 1;
 	}
 	std::clog << t->getName() << ": Total size: " << bytesToHumanReadable(t->getTotalSize(), true) << std::endl;
 

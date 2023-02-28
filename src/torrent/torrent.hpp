@@ -96,7 +96,7 @@ public:
 	Torrent();
 	~Torrent();
 
-	bool parseFile(const std::string &fileName, const std::string &downloadDir);
+	ParseResult parseFile(const std::string &fileName, const std::string &downloadDir);
 	DownloadError download(uint16_t port);
 	void seed(uint16_t port);
 
