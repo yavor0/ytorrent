@@ -490,8 +490,19 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 
 	size_t size = pieceData.size();
 	int64_t beginPos = index * pieceLength;
-	fseek(file.fp, beginPos - file.begin, SEEK_SET);
+
+	if (fseek(file.fp, beginPos - file.begin, SEEK_SET) != 0)
+	{
+		throw new std::runtime_error("fseek failed, errno = " + std::to_string(errno)); // errno is global
+	}
+
 	size_t wrote = fwrite(data, 1, size, file.fp);
+	if (wrote != size)
+	{
+		// use file.path instead of this->name
+		throw new std::runtime_error("fwrite failed in file: " + this->name + "saved to directory: " + this->downloadDir + " errno = " + std::to_string(errno)); 
+	}
+
 	this->bitfield.set(index);
 	for (const std::shared_ptr<Peer> &peer : activePeers)
 	{

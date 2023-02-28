@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 	std::clog << t->getName() << ": Downloaded: " << bytesToHumanReadable(t->getDownloadedBytes(), true) << std::endl;
 	std::clog << t->getName() << ": Uploaded:   " << bytesToHumanReadable(t->getUploadedBytes(), true) << std::endl;
 
+	
 	std::clog << "---NOW SEEDING---" << std::endl;
 	t->seed(startport);
 
