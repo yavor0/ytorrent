@@ -28,8 +28,11 @@ int main(int argc, char *argv[])
 	runnerThread.detach(); // !!!! https://stackoverflow.com/a/7989043/18301773 !!!!
 
 	Torrent::DownloadError error = t->download(startport++);
+	std::clog << t->getName() << "---DOWNLOAD FINISHED---" << std::endl;
 	std::clog << t->getName() << ": Downloaded: " << bytesToHumanReadable(t->getDownloadedBytes(), true) << std::endl;
 	std::clog << t->getName() << ": Uploaded:   " << bytesToHumanReadable(t->getUploadedBytes(), true) << std::endl;
+
+	std::clog << "---NOW SEEDING---" << std::endl;
 	t->seed(startport);
 
 	Connection::stop();

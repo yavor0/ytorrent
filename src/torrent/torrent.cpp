@@ -204,11 +204,8 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 		if (mainTracker->isNextRequestDue())
 		{
 			mainTracker->query(buildTrackerQuery(TrackerEvent::NONE));
-			// std::cout << "\n---------------Queried again--------------" << std::endl;
-			// std::cout << "Current active peers:" << activePeers.size() << std::endl
-			// 		  << std::endl;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	// https://stackoverflow.com/a/17941712/18301773
@@ -241,8 +238,17 @@ void Torrent::seed(uint16_t port)
 				peer->authenticate();
 			});
 	}
-	// periodically update ??
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000000));
+
+	for(;;)
+	{
+		std::cout << "Currently uploaded: " << bytesToHumanReadable(uploadedBytes, true) << std::endl;
+		if (mainTracker->isNextRequestDue())
+		{
+			mainTracker->query(buildTrackerQuery(TrackerEvent::COMPLETED));
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+	
 	TrackerQuery q = buildTrackerQuery(TrackerEvent::STOPPED);
 	mainTracker->query(q);
 }

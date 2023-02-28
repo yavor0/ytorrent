@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(ytorrent)
-add_compile_options(-Wall -Wextra -Wpedantic -march=native -ftrapv -O0 -g3) #-Wconversion -Wshadow 
-# add_link_options(-fsanitize=address)
+add_compile_options(-Wall -Wextra -Wpedantic -march=native -ftrapv -fsanitize=address -O0 -g3) #-Wconversion -Wshadow 
+add_link_options(-fsanitize=address)
 
 add_executable(${PROJECT_NAME}
     src/torrent/peer.cpp

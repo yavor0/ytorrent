@@ -145,7 +145,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		if (msgSize != 0)
 			return handleError("invalid interested-message size");
 
-		torrent->handlePeerDebug(shared_from_this(), "interested");
+		// torrent->handlePeerDebug(shared_from_this(), "interested");
 		state.set(PEER_INTERESTED);
 
 		if (state.test(AM_CHOKING)) // literally just ask bro
