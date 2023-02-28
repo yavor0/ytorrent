@@ -112,7 +112,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 
 		if (!nodeExists(name.c_str())) // BRUH
 		{
-			file.fp = fopen(name.c_str(), "rb+");
+			file.fp = fopen(name.c_str(), "wb+");
 			if (!file.fp)
 			{
 				std::cerr << name << ": unable to create " << name << std::endl;
@@ -545,5 +545,5 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t pIn
 
 	peer->sendPieceBlock(pIndex, begin, block, length);
 	uploadedBytes += length;
-	delete block;
+	delete[] block;
 }
