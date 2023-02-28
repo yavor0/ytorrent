@@ -112,10 +112,11 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 
 		if (!nodeExists(name.c_str())) // BRUH
 		{
-			file.fp = fopen(name.c_str(), "wb");
+			file.fp = fopen(name.c_str(), "rb+");
 			if (!file.fp)
 			{
 				std::cerr << name << ": unable to create " << name << std::endl;
+				chdir("..");
 				return false;
 			}
 		}
@@ -125,6 +126,7 @@ bool Torrent::parseFile(const std::string &fileName, const std::string &download
 			if (!file.fp)
 			{
 				std::cerr << name << ": unable to open " << name << std::endl;
+				chdir("..");
 				return false;
 			}
 
@@ -194,6 +196,7 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 		[this](const std::shared_ptr<Connection> &conn)
 		{
 			auto peer = std::make_shared<Peer>(this, conn);
+			std::clog << "\n\n\n!!Incoming!!\n\n\n" << std::endl;
 			peer->authenticate();
 		});
 
@@ -247,6 +250,7 @@ void Torrent::seed(uint16_t port)
 
 void Torrent::customDownload(std::string peerIp, std::string peerPort)
 {
+	startDownloadTime = std::chrono::high_resolution_clock::now();
 	size_t piecesNeeded = pieces.size();
 	auto peer = std::make_shared<Peer>(this);
 	peer->connect(peerIp, peerPort);
@@ -359,7 +363,7 @@ void Torrent::disconnectPeers()
 	// }
 }
 
-void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)
+void Torrent::initiatePieceRequesting(const std::shared_ptr<Peer> &peer)
 {
 	size_t index = 0;
 	int32_t priority = std::numeric_limits<int32_t>::max();
@@ -395,8 +399,8 @@ void Torrent::requestPiece(const std::shared_ptr<Peer> &peer)
 std::vector<uint8_t> Torrent::getRawBitfield() const // https://stackoverflow.com/a/9081167/18301773
 {
 	std::vector<uint8_t> rBitfield;
-	boost::to_block_range(bitfield, std::back_inserter(rBitfield));
-	for(size_t i=0;i<rBitfield.size();i++)
+	boost::to_block_range(bitfield, std::back_inserter(rBitfield)); // this shit puts bits in lsbf and not msbf
+	for(size_t i=0;i<rBitfield.size();i++) // reverse bits
 	{
 		// this shit so ugly i wanna kms
 		uint8_t b = rBitfield[i];
@@ -481,7 +485,6 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	int64_t beginPos = index * pieceLength;
 	fseek(file.fp, beginPos - file.begin, SEEK_SET);
 	size_t wrote = fwrite(data, 1, size, file.fp);
-
 	this->bitfield.set(index);
 	for (const std::shared_ptr<Peer> &peer : activePeers)
 	{
@@ -531,6 +534,11 @@ void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t pIn
 	int read = fread(&block[writePos], 1, length, file.fp);
 	if (read <= 0)
 	{
+		if (feof(file.fp))
+          std::cerr << "Error reading test.bin: unexpected end of file\n" << std::endl;
+       else if (ferror(file.fp)) {
+           perror("Error reading test.bin");
+       }
 		std::cerr << name << ": handleRequestBlock(): unable to read from: " << file.path.c_str() << std::endl;
 		return;
 	}
