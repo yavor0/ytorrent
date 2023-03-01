@@ -8,7 +8,9 @@
 using namespace bencoding;
 
 
-const int64_t MAX_BLOCK_REQUEST_SIZE = 16384; 
+const int64_t MAX_BLOCK_REQUEST_SIZE = 16384;
+extern std::ofstream logFile; 
+
 Torrent::Torrent() : acceptor(nullptr),
 					 bitfield(0),
 					 completedPieces(0),
@@ -114,7 +116,7 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 
 		File file;
 		
-		if (!nodeExists(name.c_str())) // BRUH
+		if (!nodeExists(name.c_str())) // rewrite this using only this case
 		{
 			file.fp = fopen(name.c_str(), "wb+");
 			if (!file.fp)
@@ -329,7 +331,7 @@ void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
 {
 
 	activePeers.push_back(peer);
-	std::clog << name << ": Peers: " << activePeers.size() << std::endl;
+	logFile << name << ": Peers: " << activePeers.size() << std::endl;
 }
 
 void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg)
@@ -340,8 +342,8 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 		activePeers.erase(it);
 	}
 
-	std::clog << name << ": " << peer->getStrIp() << ": " << errmsg << std::endl;
-	std::clog << name << ": Peers: " << activePeers.size() << std::endl;
+	logFile << name << ": " << peer->getStrIp() << ": " << errmsg << std::endl;
+	logFile << name << ": Peers: " << activePeers.size() << std::endl;
 }
 
 void Torrent::disconnectPeers()
@@ -467,12 +469,12 @@ int64_t Torrent::pieceSize(size_t pieceIndex) const
 
 void Torrent::handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error)
 {
-	std::cerr << name << ": tracker request failed: " << error << std::endl;
+	logFile << name << ": tracker request failed: " << error << std::endl;
 }
 
 void Torrent::handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg)
 {
-	std::clog << name << ": " << peer->getStrIp() << " " << msg << std::endl;
+	logFile << name << ": " << peer->getStrIp() << " " << msg << std::endl;
 }
 
 void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &pieceData)
@@ -498,7 +500,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 		throw new std::runtime_error("fseek failed, errno = " + std::to_string(errno)); // errno is global
 	}
 
-	size_t wrote = fwrite(data, 1, size, file.fp);
+	size_t wrote = fwrite(data, 1, size, file.fp); // faster than fstream because it doesn't do any buffering 
 	if (wrote != size)
 	{
 		// use file.path instead of this->name
@@ -518,12 +520,10 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 			  << name << ": Download speed: " << getDownloadSpeed() << " MB/s"
 			  << ", ETA: " << formatTime(calculateETA())
 			  << std::endl;
-	// std::clog << "\n\n\n" << this->bitfield << "\n\n\n" << std::endl;
 }
 
 void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length)
 {
-	// std::clog << "Peer requested piece: " << pIndex << " " << begin << " " << length << std::endl;
 	// Peer requested piece block from us
 	if (pIndex >= pieces.size())
 		return peer->disconnect();
