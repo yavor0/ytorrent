@@ -82,7 +82,7 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 	memcpy(&handshake[1], "BitTorrent protocol", 19);
 	memset(&handshake[20], 0x00, 8);	  // reserved bytes	(last |= 0x01 for DHT or last |= 0x04 for FPE)
 	memcpy(&handshake[28], checkSum, 20); // info hash
-	memcpy(&handshake[48], "-YT00000000000000000", 8);
+	memcpy(&handshake[48], "-YT00000000000000000", 20);
 	memcpy(&peerId[0], "-YT00000000000000000", 20);
 
 	name = ((*infoDict)[BString::create("name")])->as<BString>()->value();
