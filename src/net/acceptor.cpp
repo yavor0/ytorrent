@@ -24,7 +24,7 @@ void Acceptor::initiateAsyncAcceptLoop(const AcceptCallBack &acceptCB)
 	started = true;
 	std::shared_ptr<Connection> conn = std::make_shared<Connection>();
 	tcpAcceptor.async_accept(conn->socket,
-							 [=](const boost::system::error_code &error)
+							 [acceptCB, conn, this](const boost::system::error_code &error)
 							 {
 								 if (!error)
 								 {

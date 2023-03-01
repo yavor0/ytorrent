@@ -60,7 +60,7 @@ private:
 	friend class Tracker;
 
 	bool checkPieceHash(const uint8_t *data, size_t size, uint32_t index);
-	bool validateTracker(const std::string &url, const TrackerQuery &r, uint16_t myPort);
+	bool validateTracker(const std::string &turl, const TrackerQuery &r, uint16_t myPort);
 	void connectToPeers(const uint8_t *peers, size_t size);
 	void requestPiece(const std::shared_ptr<Peer> &peer, size_t pieceIndex);
 	void initiatePieceRequesting(const std::shared_ptr<Peer> &peer);

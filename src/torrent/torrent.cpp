@@ -97,7 +97,7 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 		memcpy(&piece.hash[0], piecesStr.c_str() + i, 20);
 		this->pieces.push_back(piece);
 	}
-	// this->bitfield.reserve(this->pieces.size()); // DOESNT WORK. WHY???
+	// this->bitfield.resize(this->pieces.size()); // Use this
 	this->bitfield = boost::dynamic_bitset<uint8_t>(this->pieces.size());
 	// std::clog << "\n\n\n" << this->bitfield.capacity() << "\n\n\n" << std::endl;
 
@@ -282,12 +282,12 @@ void Torrent::customDownload(std::string peerIp, std::string peerPort)
 	}
 }
 
-bool Torrent::validateTracker(const std::string &furl, const TrackerQuery &q, uint16_t myPort)
+bool Torrent::validateTracker(const std::string &turl, const TrackerQuery &q, uint16_t myPort)
 {
-	UrlMeta urlMeta = parseTrackerUrl(furl);
+	UrlMeta urlMeta = parseTrackerUrl(turl);
 	if (urlMeta.host.empty())
 	{
-		std::cerr << name << ": queryTracker(): failed to parse announce url: " << furl << std::endl;
+		std::cerr << name << ": queryTracker(): failed to parse announce url: " << turl << std::endl;
 		return false;
 	}
 

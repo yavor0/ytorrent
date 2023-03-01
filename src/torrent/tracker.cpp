@@ -76,7 +76,7 @@ bool Tracker::httpRequest(const TrackerQuery &r)
 		<< "&downloaded=" << r.downloaded
 		<< "&left=" << r.remaining
 		<< "&compact=1"
-		<< urlMeta.passKeyParam
+		<< urlEncode(urlMeta.passKeyParam)
 		<< " HTTP/1.0\r\n"
 		<< "Host: " << urlMeta.host
 		<< "\r\n"
