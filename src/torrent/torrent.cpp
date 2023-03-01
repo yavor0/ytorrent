@@ -211,7 +211,8 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 		{
 			mainTracker->query(buildTrackerQuery(TrackerEvent::NONE));
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		displayProgress();
 	}
 
 	// https://stackoverflow.com/a/17941712/18301773
@@ -245,7 +246,7 @@ void Torrent::seed(uint16_t port)
 			});
 	}
 
-	for(;;)
+	for(;;) // add some condition to stop seeding for ex. until have uploaded the file size at least once 
 	{
 		std::cout << "Currently uploaded: " << bytesToHumanReadable(uploadedBytes, true) << std::endl;
 		if (mainTracker->isNextRequestDue())
@@ -481,7 +482,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 {
 	if (!checkPieceHash(&pieceData[0], pieceData.size(), index))
 	{
-		std::cerr << name << ": " << peer->getStrIp() << " checksum mismatch for piece " << index << "." << std::endl;
+		logFile << name << ": " << peer->getStrIp() << " checksum mismatch for piece " << index << "." << std::endl;
 		++hashMisses;
 		wastedBytes += pieceData.size();
 		return;
@@ -512,17 +513,18 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	{
 		peer->sendHave(index);
 	}
-
-	std::clog << name << ": " << peer->getStrIp() << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
-			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", "
-			  << "Hash miss: " << hashMisses << ")"
-			  << std::endl
-			  << name << ": Download speed: " << getDownloadSpeed() << " MB/s"
-			  << ", ETA: " << formatTime(calculateETA())
-			  << std::endl;
+}
+void Torrent::displayProgress() const
+{
+	std::clog << "\r" << name << ": " << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
+			<< "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", "
+			<< "Hash miss: " << hashMisses << ")"
+			<< " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
+			<< ", ETA: " << formatTime(calculateETA())
+			<< std::flush;
 }
 
-void Torrent::handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length)
+void Torrent::handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length)
 {
 	// Peer requested piece block from us
 	if (pIndex >= pieces.size())

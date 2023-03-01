@@ -234,7 +234,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		}
 
 		// torrent->handlePeerDebug(shared_from_this(), "requested piece block of length " + bytesToHumanReadable(length, true));
-		torrent->handleRequestBlock(shared_from_this(), index, begin, length);
+		torrent->handleBlockRequest(shared_from_this(), index, begin, length);
 		break;
 	}
 	case PIECE_BLOCK:
@@ -254,7 +254,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 							   [index](const Piece *piece)
 							   { return piece->index == index; });
 		if (it == pieceQueue.end())
-			return handleError("received piece " + std::to_string(index) + " which we did not ask for");
+			return handleError("received piece " + std::to_string(index) + " which wasn't asked for");
 
 		Piece *piece = *it;
 		uint32_t blockIndex = begin / MAX_BLOCK_REQUEST_SIZE;
@@ -277,7 +277,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			if (piece->haveBlocks == piece->totalBlocks)
 			{
 				std::vector<uint8_t> pieceData;
-				pieceData.reserve(piece->totalBlocks * MAX_BLOCK_REQUEST_SIZE); // just a prediction could be bit less
+				pieceData.reserve(piece->totalBlocks * MAX_BLOCK_REQUEST_SIZE); // just a prediction could be less but not more
 				for (size_t i = 0; i < piece->totalBlocks; i++)
 				{
 					for (size_t j = 0; j < piece->blocks[i].size; j++)
@@ -288,7 +288,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 
 				torrent->handlePieceCompleted(shared_from_this(), index, pieceData);
 				pieceQueue.erase(it);
-				delete piece;
+				delete piece; // explodes if i dont delete the piece??
 
 				// Have to do this here, if its done inside of handlePieceCompleted
 				// pieceQueue will fail due to sendPieceRequest changing position

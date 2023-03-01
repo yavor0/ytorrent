@@ -3,7 +3,6 @@
 
 #include <regex>
 #include <memory>
-#include <iomanip>
 #include <iterator>
 #include <algorithm>
 #include <sstream>
@@ -78,10 +77,6 @@ UrlMeta parseTrackerUrl(const std::string &url)
 			std::replace(urlMeta.passKeyParam.begin(), urlMeta.passKeyParam.end(), '?', '&');
 		}
 	}
-	else
-	{
-		std::cout << "No match found" << std::endl;
-	}
 
 	return urlMeta;
 }
@@ -96,7 +91,7 @@ std::string bytesToHumanReadable(uint32_t bytes, bool si)
 	size_t exp = static_cast<size_t>(std::log(bytes) / std::log(u));
 	const char *e = si ? "kMGTPE" : "KMGTPE";
 	std::ostringstream os;
-	os << static_cast<double>(bytes / std::pow(u, exp)) << " ";
+	os << std::fixed << std::showpoint << std::setprecision(2) << static_cast<double>(bytes / std::pow(u, exp)) << " ";
 	os << e[exp - 1] << (si ? "" : "i") << "B";
 
 	return os.str();

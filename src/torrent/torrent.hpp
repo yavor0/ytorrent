@@ -85,7 +85,9 @@ private:
 	void handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error);
 	void handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg);
 	void handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &data);
-	void handleRequestBlock(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length);
+	void handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length);
+
+	void displayProgress() const;
 public:
 	// std::mutex removeLock;
 	enum class DownloadError
