@@ -64,8 +64,8 @@ int main(int argc, char **argv)
 	{
 		std::clog << "YTorrent version 0 (in alpha)" << std::endl;
 		return 0;
-	}	
-
+	}
+	
 	if (vm.count("torrent") == 0)
 	{
 		std::cerr << argv[0] << ": no torrent file specified" << std::endl;
@@ -78,6 +78,7 @@ int main(int argc, char **argv)
 		std::cerr << argv[0] << ": error opening log file: " << logFname << std::endl;
 		return 1;
 	}
+
 
 	size_t completed = 0;
 	size_t errors = 0;
