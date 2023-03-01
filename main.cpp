@@ -64,29 +64,18 @@ int main(int argc, char **argv)
 	{
 		std::clog << "YTorrent version 0 (in alpha)" << std::endl;
 		return 0;
-	}
-	if (vm.count("log"))
-	{
-		logFile.open(logFname, std::ios::out | std::ios::trunc);
-		if (!logFile.is_open())
-		{
-			std::cerr << argv[0] << ": error opening log file: " << logFname << std::endl;
-			return 1;
-		}
-	}
-	else
-	{
-		logFile.open(logFname, std::ios::out | std::ios::trunc);
-		if (!logFile.is_open())
-		{
-			std::cerr << argv[0] << ": error opening log file: " << logFname << std::endl;
-			return 1;
-		}
-	}
+	}	
+
 	if (vm.count("torrent") == 0)
 	{
 		std::cerr << argv[0] << ": no torrent file specified" << std::endl;
 		print_help(argv[0]);
+		return 1;
+	}
+	logFile.open(logFname, std::ios::out | std::ios::trunc);
+	if (!logFile.is_open())
+	{
+		std::cerr << argv[0] << ": error opening log file: " << logFname << std::endl;
 		return 1;
 	}
 
