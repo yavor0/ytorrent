@@ -36,7 +36,6 @@ Peer::~Peer()
 	}
 }
 
-
 void Peer::disconnect()
 {
 	torrent->removePeer(shared_from_this(), "disconnect called");
@@ -85,7 +84,7 @@ void Peer::authenticate()
 
 				   me->sendBitfield((me->torrent)->getRawBitfield());
 
-				   std::clog << (me->torrent)->name << ": " << (me->conn)->getIPString() << ":" << std::to_string((me->conn)->getPort())  << " - connected! (" << (me->torrent)->getActivePeers() << " established)" << std::endl;
+				   (me->torrent)->handlePeerDebug(me, "connected! (" + std::to_string((me->torrent)->getActivePeers()) + " established)");
 				   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
 			   });
 }

@@ -43,7 +43,7 @@ private:
 	size_t uploadedBytes;
 	size_t downloadedBytes;
 	size_t wastedBytes;
-	size_t hashMisses;
+	size_t pieceHashMisses;
 
 	size_t pieceLength;
 	size_t totalSize;
@@ -87,7 +87,8 @@ private:
 	void handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &data);
 	void handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length);
 
-	void displayProgress() const;
+	void displayDownloadProgress() const;
+	void displaySeedProgress() const;
 public:
 	// std::mutex removeLock;
 	enum class DownloadError

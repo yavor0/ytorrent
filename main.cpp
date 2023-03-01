@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 
 	if (seed)
 	{
-		std::clog << "---NOW SEEDING---" << std::endl;
+		std::clog << t->getName() << "---INITIATING SEEDING---" << std::endl;
 		t->seed(startport);
 	}
 

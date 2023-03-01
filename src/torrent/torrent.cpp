@@ -7,9 +7,8 @@
 #include <boost/uuid/detail/sha1.hpp>
 using namespace bencoding;
 
-
 const int64_t MAX_BLOCK_REQUEST_SIZE = 16384;
-extern std::ofstream logFile; 
+extern std::ofstream logFile;
 
 Torrent::Torrent() : acceptor(nullptr),
 					 bitfield(0),
@@ -17,10 +16,12 @@ Torrent::Torrent() : acceptor(nullptr),
 					 uploadedBytes(0),
 					 downloadedBytes(0),
 					 wastedBytes(0),
-					 hashMisses(0),
+					 pieceHashMisses(0),
 					 pieceLength(0),
 					 totalSize(0)
 {
+	memset(handshake, 0, 68);
+	memset(peerId, 0, 20);
 	activePeers.reserve(100); // use constant
 }
 
@@ -115,10 +116,10 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 		int64_t length = ((*infoDict)[BString::create("length")])->as<BInteger>()->value();
 
 		File file;
-		
+
 		if (!nodeExists(name.c_str())) // rewrite this using only this case
 		{
-			file.fp = fopen(name.c_str(), "wb+");
+			file.fp = fopen(name.c_str(), "wb+"); // platform independent
 			if (!file.fp)
 			{
 				std::cerr << name << ": unable to create " << name << std::endl;
@@ -128,7 +129,7 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 		}
 		else
 		{
-			file.fp = fopen(name.c_str(), "rb+");
+			file.fp = fopen(name.c_str(), "rb+"); // platform independent
 			if (!file.fp)
 			{
 				std::cerr << name << ": unable to open " << name << std::endl;
@@ -194,7 +195,7 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	}
 	if (this->acceptor == nullptr)
 	{
-		this->acceptor = new Acceptor(port);
+		this->acceptor = new Acceptor(port); // this could throw an exception. how do i handle it?
 	}
 
 	// async accept incoming connections
@@ -212,8 +213,9 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 			mainTracker->query(buildTrackerQuery(TrackerEvent::NONE));
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		displayProgress();
+		displayDownloadProgress();
 	}
+	std::cout << std::endl; // make up for the last \r
 
 	// https://stackoverflow.com/a/17941712/18301773
 	if (file.fp != nullptr)
@@ -246,16 +248,17 @@ void Torrent::seed(uint16_t port)
 			});
 	}
 
-	for(;;) // add some condition to stop seeding for ex. until have uploaded the file size at least once 
+	for (;;) // add some condition to stop seeding for ex. until have uploaded the file size at least once
 	{
-		std::cout << "Currently uploaded: " << bytesToHumanReadable(uploadedBytes, true) << std::endl;
 		if (mainTracker->isNextRequestDue())
 		{
 			mainTracker->query(buildTrackerQuery(TrackerEvent::COMPLETED));
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		displaySeedProgress();
 	}
-	
+	std::cout << std::endl; // make up for the last \r
+
 	TrackerQuery q = buildTrackerQuery(TrackerEvent::STOPPED);
 	mainTracker->query(q);
 }
@@ -406,13 +409,11 @@ void Torrent::initiatePieceRequesting(const std::shared_ptr<Peer> &peer)
 	}
 }
 
-
-
 std::vector<uint8_t> Torrent::getRawBitfield() const // https://stackoverflow.com/a/9081167/18301773
 {
 	std::vector<uint8_t> rBitfield;
 	boost::to_block_range(bitfield, std::back_inserter(rBitfield)); // this shit puts bits in lsbf and not msbf
-	for(size_t i=0;i<rBitfield.size();i++) // reverse bits
+	for (size_t i = 0; i < rBitfield.size(); i++)					// reverse bits
 	{
 		// this shit so ugly i wanna kms
 		uint8_t b = rBitfield[i];
@@ -423,16 +424,16 @@ std::vector<uint8_t> Torrent::getRawBitfield() const // https://stackoverflow.co
 	}
 	return rBitfield;
 }
-	// std::vector<uint8_t> bf;
-	// for(size_t i=0;i<bitfield.size();i++)
-	// {
-	// 	uint8_t b = 0;
-	// 	for(size_t j=0;j<8;j++)
-	// 	{
-	// 		b |= bitfield[i*8+j] << j;
-	// 	}
-	// 	bf.push_back(b);
-	// }
+// std::vector<uint8_t> bf;
+// for(size_t i=0;i<bitfield.size();i++)
+// {
+// 	uint8_t b = 0;
+// 	for(size_t j=0;j<8;j++)
+// 	{
+// 		b |= bitfield[i*8+j] << j;
+// 	}
+// 	bf.push_back(b);
+// }
 
 size_t Torrent::calculateETA() const
 {
@@ -483,7 +484,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	if (!checkPieceHash(&pieceData[0], pieceData.size(), index))
 	{
 		logFile << name << ": " << peer->getStrIp() << " checksum mismatch for piece " << index << "." << std::endl;
-		++hashMisses;
+		++pieceHashMisses;
 		wastedBytes += pieceData.size();
 		return;
 	}
@@ -501,11 +502,11 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 		throw new std::runtime_error("fseek failed, errno = " + std::to_string(errno)); // errno is global
 	}
 
-	size_t wrote = fwrite(data, 1, size, file.fp); // faster than fstream because it doesn't do any buffering 
+	size_t wrote = fwrite(data, 1, size, file.fp); // faster than fstream because it doesn't do any buffering
 	if (wrote != size)
 	{
 		// use file.path instead of this->name
-		throw new std::runtime_error("fwrite failed in file: " + this->name + "saved to directory: " + this->downloadDir + " errno = " + std::to_string(errno)); 
+		throw new std::runtime_error("fwrite failed in file: " + this->name + "saved to directory: " + this->downloadDir + " errno = " + std::to_string(errno));
 	}
 
 	this->bitfield.set(index);
@@ -514,14 +515,23 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 		peer->sendHave(index);
 	}
 }
-void Torrent::displayProgress() const
+
+void Torrent::displayDownloadProgress() const
 {
-	std::clog << "\r" << name << ": " << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
-			<< "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", "
-			<< "Hash miss: " << hashMisses << ")"
-			<< " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
-			<< ", ETA: " << formatTime(calculateETA())
-			<< std::flush;
+	std::clog << "\r" << name << ": "
+			  << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
+			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
+			  << " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
+			  << ", ETA: " << formatTime(calculateETA()) << "       "
+			  << std::flush;
+}
+
+void Torrent::displaySeedProgress() const
+{
+	std::clog << "\r" << name << ": "
+			  << "(Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
+			  << "       "
+			  << std::flush;
 }
 
 void Torrent::handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length)
@@ -541,7 +551,7 @@ void Torrent::handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIn
 	if (file.fp == nullptr)
 	{
 		chdir(downloadDir.c_str());
-		file.fp = fopen(name.c_str(), "rb"); // has to be rb
+		file.fp = fopen(name.c_str(), "rb"); // platform independent 
 		if (!file.fp)
 		{
 			std::cerr << name << ": unable to open " << name << std::endl;
@@ -553,7 +563,7 @@ void Torrent::handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIn
 	size_t writePos = 0;
 	// seek to where it begins
 	fseek(file.fp, blockBegin - file.begin, SEEK_SET);
-	int read = fread(&block[writePos], 1, length, file.fp);
+	int read = fread(&block[writePos], 1, length, file.fp); // platform independent
 	if (read <= 0)
 	{
 		std::cerr << name << ": handleRequestBlock(): unable to read from: " << file.path.c_str() << std::endl;
