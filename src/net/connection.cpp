@@ -1,13 +1,13 @@
 #include "connection.hpp"
 
-asio::io_context g_io_context;
-boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard(g_io_context.get_executor());
+std::shared_ptr<asio::io_context> g_io_context = std::make_shared<asio::io_context>();
+boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard((*g_io_context).get_executor());
 // https://www.reddit.com/r/cpp/comments/jdy2gd/comment/g9bbflz/?utm_source=share&utm_medium=web2x&context=3
-Connection::Connection() : resolver(g_io_context),
-						   socket(g_io_context)
+Connection::Connection() : io_context_ptr(g_io_context),
+						   resolver(*io_context_ptr),
+						   socket(*io_context_ptr)
 {
 }
-
 Connection::~Connection()
 {
 	close(false);
@@ -15,7 +15,8 @@ Connection::~Connection()
 
 void Connection::start()
 {
-	g_io_context.run();
+	std::shared_ptr<asio::io_context> local_io_context_ptr = g_io_context;
+	(*local_io_context_ptr).run();
 }
 
 void Connection::stop()
@@ -32,7 +33,7 @@ void Connection::connect(const std::string &host, const std::string &port, const
 	this->resolver.async_resolve(
 		query,
 		// Resolve handler
-		[me=shared_from_this()](const boost::system::error_code &e, asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
+		[me = shared_from_this()](const boost::system::error_code &e, asio::ip::basic_resolver<asio::ip::tcp>::iterator endpoint)
 		{
 			if (e)
 			{
@@ -85,7 +86,7 @@ void Connection::read(size_t bytes, const ReadCallback &rc) // bruh https://stac
 	asio::async_read(
 		this->socket, this->inputStream.prepare(bytes),
 		// Read handler
-		[me=shared_from_this()](const boost::system::error_code &e, size_t readSize)
+		[me = shared_from_this()](const boost::system::error_code &e, size_t readSize)
 		{
 			if (e)
 			{
@@ -109,7 +110,7 @@ void Connection::write(const uint8_t *data, size_t bytes)
 	asio::async_write(
 		this->socket,
 		asio::buffer(data, bytes),
-		[me=shared_from_this()](const boost::system::error_code &error, std::size_t bytesTransferred)
+		[me = shared_from_this()](const boost::system::error_code &error, std::size_t bytesTransferred)
 		{
 			if (error)
 			{
@@ -121,7 +122,7 @@ void Connection::write(const uint8_t *data, size_t bytes)
 void Connection::handleError(const boost::system::error_code &error)
 {
 	// check for operation aborted!!! https://www.reddit.com/r/cpp/comments/jdy2gd/asio_users_how_do_you_deal_with_cancellation/
-	if(error == asio::error::operation_aborted)
+	if (error == asio::error::operation_aborted)
 	{
 		return;
 	}

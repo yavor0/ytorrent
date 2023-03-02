@@ -13,6 +13,7 @@ public:
 	bool isStarted() const;
 
 private:
+	std::shared_ptr<asio::io_context> io_context_ptr;
 	bool started; 
 	asio::ip::tcp::acceptor tcpAcceptor;
 };
