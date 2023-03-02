@@ -8,56 +8,50 @@ class OutgoingMessage
 {
 private:
 	std::vector<uint8_t> dataBuffer;
-	size_t writeIndex;
 
 public:
-	OutgoingMessage(size_t fixedSize = 0) : writeIndex(0)
+	OutgoingMessage(size_t fixedSize)
 	{
-		if (fixedSize != 0)
-		{
-			dataBuffer.reserve(fixedSize);
-		}
+		// to reduce heap allocations for small byte insertions
+		dataBuffer.reserve(fixedSize);
 	}
 
 	~OutgoingMessage()
 	{
 	}
 
-	void clear()
-	{
-		dataBuffer.clear();
-		writeIndex = 0;
-	}
 	void addCustom(const uint8_t *bytes, size_t size)
 	{
-		dataBuffer.reserve(size);
-		memcpy(&dataBuffer[writeIndex], &bytes[0], size);
-		writeIndex += size;
+		dataBuffer.insert(dataBuffer.end(), &bytes[0], &bytes[size]);
 	}
 
 	void addU8(uint8_t byte)
 	{
-		dataBuffer[writeIndex++] = byte;
+		dataBuffer.push_back(byte);
 	}
 	void addU16(uint16_t val)
 	{
-		writeAsBE16(&dataBuffer[writeIndex], val);
-		writeIndex += 2;
+		uint8_t bytes[sizeof(val)];
+
+		writeAsBE16(&bytes[0], val);
+		addCustom(&bytes[0], sizeof(val));
 	}
 	void addU32(uint32_t val)
 	{
-		writeAsBE32(&dataBuffer[writeIndex], val);
-		writeIndex += 4;
+		uint8_t bytes[sizeof(val)];
+
+		writeAsBE32(&bytes[0], val);
+		addCustom(&bytes[0], sizeof(val));
 	}
 	void addU64(uint64_t val)
 	{
-		writeAsBE64(&dataBuffer[writeIndex], val);
-		writeIndex += 8;
-	}
+		uint8_t bytes[sizeof(val)];
 
-	const uint8_t *data() const { return &dataBuffer[writeIndex]; }
-	const uint8_t *data(size_t p) const { return &dataBuffer[p]; }
-	size_t size() const { return writeIndex; }
+		writeAsBE64(&bytes[0], val);
+		addCustom(&bytes[0], sizeof(val));
+	}
+	const uint8_t *data() const { return &dataBuffer.at(0); }
+	size_t size() const { return dataBuffer.size(); }
 };
 
 #endif
