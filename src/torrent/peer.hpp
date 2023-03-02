@@ -18,7 +18,7 @@ class Peer : public std::enable_shared_from_this<Peer>
 	{
 		AM_CHOKING = 0,
 		AM_INTERESTED = 1,
-		PEER_CHOKED = 2,
+		PEER_CHOKING = 2,
 		PEER_INTERESTED = 3
 	};
 

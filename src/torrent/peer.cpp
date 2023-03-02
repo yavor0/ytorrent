@@ -10,7 +10,7 @@ Peer::Peer(Torrent *t)
 	conn = std::make_shared<Connection>(); // https://stackoverflow.com/a/5558955/18301773
 	// state = boost::dynamic_bitset<>(4);
 	state.set(AM_CHOKING);
-	state.set(PEER_CHOKED);
+	state.set(PEER_CHOKING);
 }
 
 Peer::Peer(Torrent *t, const std::shared_ptr<Connection> &conn)
@@ -19,7 +19,7 @@ Peer::Peer(Torrent *t, const std::shared_ptr<Connection> &conn)
 	  state(4)
 {
 	state.set(AM_CHOKING);
-	state.set(PEER_CHOKED);
+	state.set(PEER_CHOKING);
 }
 
 Peer::~Peer()
@@ -57,8 +57,6 @@ void Peer::connect(const std::string &ip, const std::string &port)
 											   return me->handleError("info hash/protocol type mismatch");
 
 										   std::string peerId((const char *)&peerHandshake[48], 20);
-										   //    if (!peerId.empty() && peerId != peerId) // ??????
-										   // 	   return me->handleError("unverified");
 
 										   me->peerId = peerId;
 										   (me->torrent)->addPeer(me->shared_from_this());
@@ -121,7 +119,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			return handleError("invalid choke-message size");
 
 		torrent->handlePeerDebug(shared_from_this(), "choke");
-		state.set(PEER_CHOKED);
+		state.set(PEER_CHOKING);
 		break;
 	}
 	case UNCHOKE:
@@ -129,7 +127,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		if (msgSize != 0)
 			return handleError("invalid unchoke-message size");
 
-		state.reset(PEER_CHOKED);
+		state.reset(PEER_CHOKING);
 		torrent->handlePeerDebug(shared_from_this(), "unchoke");
 
 		for (const Piece *piece : pieceQueue)
@@ -361,7 +359,7 @@ void Peer::sendPieceRequest(uint32_t index)
 	piece->blocks = new Block[numBlocks];
 
 	pieceQueue.push_back(piece);
-	if (!state.test(PEER_CHOKED)) // bro choked me in the meantime
+	if (!state.test(PEER_CHOKING)) // bro choked me in the meantime
 	{
 		requestPiece(index);
 	}
@@ -426,7 +424,7 @@ void Peer::sendCancel(uint32_t index, uint32_t begin, uint32_t length)
 
 void Peer::requestPiece(size_t pieceIndex)
 {
-	if (state.test(PEER_CHOKED))
+	if (state.test(PEER_CHOKING))
 	{
 		return handleError("Attempt to request piece from a peer that is remotely choked");
 	}

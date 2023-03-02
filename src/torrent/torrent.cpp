@@ -217,7 +217,6 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	event = (completedPieces == piecesNeeded) ? TrackerEvent::COMPLETED : TrackerEvent::STOPPED;
 
 	mainTracker->query(buildTrackerQuery(event));
-	// disconnectPeers();
 	return event == TrackerEvent::COMPLETED ? DownloadError::COMPLETED : DownloadError::NETWORK_ERROR;
 }
 
