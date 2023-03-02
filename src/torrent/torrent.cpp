@@ -297,20 +297,23 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 	{
 		const uint8_t *iport = peers + i;
 		uint32_t ip = readAsLE32(iport);
-
-		// race condition?
 		bool exists = false;
-		for (size_t i = 0; i < activePeers.size(); i++)
+		// race condition?
+		if (true)
 		{
-			if (activePeers[i]->getRawIp() == ip)
+			std::lock_guard<std::mutex> guard(this->m);
+			for (size_t i = 0; i < activePeers.size(); i++)
 			{
-				exists = true;
-				break;
+				if (activePeers[i]->getRawIp() == ip)
+				{
+					exists = true;
+					break;
+				}
 			}
-		}
-		if (exists)
-		{
-			continue;
+			if (exists)
+			{
+				continue;
+			}
 		}
 
 		// Asynchronously connect to that peer, and do not add it to our
@@ -322,7 +325,7 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
 {
-
+	std::lock_guard<std::mutex> guard(this->m);
 	activePeers.push_back(peer);
 	logFile << name << ": Peers: " << activePeers.size() << std::endl;
 }
@@ -332,6 +335,7 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 	auto it = std::find(activePeers.begin(), activePeers.end(), peer);
 	if (it != activePeers.end())
 	{
+		std::lock_guard<std::mutex> guard(this->m);
 		activePeers.erase(it);
 	}
 
@@ -523,7 +527,6 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	}
 }
 
-
 void Torrent::handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length)
 {
 	// Peer requested piece block from us
@@ -541,7 +544,7 @@ void Torrent::handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIn
 	if (file.fp == nullptr)
 	{
 		chdir(downloadDir.c_str());
-		file.fp = fopen(name.c_str(), "rb"); // platform independent 
+		file.fp = fopen(name.c_str(), "rb"); // platform independent
 		if (!file.fp)
 		{
 			std::cerr << name << ": unable to open " << name << std::endl;

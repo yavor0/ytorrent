@@ -31,7 +31,7 @@ private:
 		int32_t priority;
 		uint8_t hash[20];
 	};
-
+	std::mutex m;
 	Acceptor *acceptor;
 	std::vector<std::shared_ptr<Peer>> activePeers; // make this thread-safe??
 	std::vector<Piece> pieces;
