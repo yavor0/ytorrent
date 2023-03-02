@@ -74,7 +74,7 @@ void Connection::close(bool warn)
 	}
 }
 
-void Connection::read(size_t bytes, const ReadCallback &rc)
+void Connection::read(size_t bytes, const ReadCallback &rc) // bruh https://stackoverflow.com/q/291871/18301773
 {
 	if (!isConnected())
 	{

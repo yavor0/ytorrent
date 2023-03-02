@@ -27,23 +27,12 @@ Torrent::Torrent() : acceptor(nullptr),
 
 Torrent::~Torrent()
 {
-	// maybe macke .isOpen atomic???
+	// maybe make .isOpen atomic???
 	if (file.fp != nullptr)
 	{
 		fclose(file.fp);
 		file.fp = nullptr;
 	}
-
-	// for(size_t i =0; i<this->activePeers.size();i++)
-	// {
-	// 	activePeers[i]->disconnect();
-	// 	// activePeers[i].get()->~Peer();
-	// 	if(activePeers[i].use_count() == 4)
-	// 	{
-	// 		// delete activePeers[i].get();
-	// 		activePeers[i].get()->~Peer();
-	// 	}
-	// }
 }
 
 ParseResult Torrent::parseFile(const std::string &fileName, const std::string &downloadDir)
@@ -479,6 +468,24 @@ void Torrent::handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::stri
 	logFile << name << ": " << peer->getStrIp() << " " << msg << std::endl;
 }
 
+void Torrent::displayDownloadProgress() const
+{
+	std::clog << "\r" << name << ": "
+			  << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
+			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
+			  << " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
+			  << ", ETA: " << formatTime(calculateETA()) << "       "
+			  << std::flush;
+}
+
+void Torrent::displaySeedProgress() const
+{
+	std::clog << "\r" << name << ": "
+			  << "(Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
+			  << "       "
+			  << std::flush;
+}
+
 void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t index, const std::vector<uint8_t> &pieceData)
 {
 	if (!checkPieceHash(&pieceData[0], pieceData.size(), index))
@@ -491,7 +498,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 
 	pieces[index].finished = true;
 	downloadedBytes += pieceData.size();
-	++completedPieces;
+	this->completedPieces += 1;
 	const uint8_t *data = &pieceData[0];
 
 	size_t size = pieceData.size();
@@ -516,23 +523,6 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	}
 }
 
-void Torrent::displayDownloadProgress() const
-{
-	std::clog << "\r" << name << ": "
-			  << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
-			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
-			  << " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
-			  << ", ETA: " << formatTime(calculateETA()) << "       "
-			  << std::flush;
-}
-
-void Torrent::displaySeedProgress() const
-{
-	std::clog << "\r" << name << ": "
-			  << "(Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
-			  << "       "
-			  << std::flush;
-}
 
 void Torrent::handleBlockRequest(const std::shared_ptr<Peer> &peer, uint32_t pIndex, uint32_t begin, uint32_t length)
 {

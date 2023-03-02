@@ -39,7 +39,7 @@ public:
 	void close(bool warn = true); // Pass false in ErrorCallback otherwise possible infinite recursion
 	bool isConnected() const { return this->socket.is_open(); }
 
-	inline void write(const OutgoingMessage &om) { write(om.data(0), om.size()); }
+	inline void write(const OutgoingMessage &om) { write(om.data(), om.size()); }
 	void write(const uint8_t *data, size_t bytes);
 	void read(size_t bytes, const ReadCallback &readCB);
 

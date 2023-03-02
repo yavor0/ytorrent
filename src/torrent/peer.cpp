@@ -60,7 +60,7 @@ void Peer::connect(const std::string &ip, const std::string &port)
 										   //    if (!peerId.empty() && peerId != peerId) // ??????
 										   // 	   return me->handleError("unverified");
 
-										   peerId = peerId;
+										   me->peerId = peerId;
 										   (me->torrent)->addPeer(me->shared_from_this());
 										   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
 									   });
@@ -78,7 +78,7 @@ void Peer::authenticate()
 					   return me->handleError("info hash/protocol type mismatch");
 
 				   std::string peerId((const char *)&peerHandshake[48], 20);
-				   peerId = peerId;
+				   me->peerId = peerId;
 				   (me->conn)->write(myHandshake, 68);
 				   (me->torrent)->addPeer(me);
 
@@ -342,7 +342,7 @@ void Peer::sendBitfield(std::vector<uint8_t> rBitfield)
 	OutgoingMessage out(5 + rBitfield.size());
 	out.addU32(1UL + rBitfield.size()); // length
 	out.addU8(BITFIELD);
-	out.addCustom(rBitfield.data(), rBitfield.size());
+	out.addCustom(rBitfield.data(), rBitfield.size()); // already in big endian
 
 	conn->write(out);
 }
@@ -374,7 +374,7 @@ void Peer::sendPieceBlock(uint32_t index, uint32_t begin, uint8_t *block, uint32
 	out.addU8((uint8_t)PIECE_BLOCK);
 	out.addU32(index);
 	out.addU32(begin);
-	out.addCustom(block, length);
+	out.addCustom(block, length); //already in be
 
 	conn->write(out);
 }
