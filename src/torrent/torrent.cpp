@@ -416,16 +416,6 @@ std::vector<uint8_t> Torrent::getRawBitfield() const // https://stackoverflow.co
 	}
 	return rBitfield;
 }
-// std::vector<uint8_t> bf;
-// for(size_t i=0;i<bitfield.size();i++)
-// {
-// 	uint8_t b = 0;
-// 	for(size_t j=0;j<8;j++)
-// 	{
-// 		b |= bitfield[i*8+j] << j;
-// 	}
-// 	bf.push_back(b);
-// }
 
 size_t Torrent::calculateETA() const
 {
@@ -473,8 +463,8 @@ void Torrent::handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::stri
 
 void Torrent::displayDownloadProgress() const
 {
-	std::clog << "\r" << name << ": "
-			  << " Completed " << completedPieces << "/" << pieces.size() << " pieces "
+	std::clog << "\r" << name
+			  << ": Completed " << completedPieces << "/" << pieces.size() << " pieces "
 			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
 			  << " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
 			  << ", ETA: " << formatTime(calculateETA()) << "       "
