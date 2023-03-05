@@ -132,7 +132,11 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 
 		for (const Piece *piece : pieceQueue)
 		{
-			requestPiece(piece->index);
+			if(piece!=nullptr)
+			{
+				requestPiece(piece->index);
+			}
+			
 		}
 
 		break;
@@ -173,7 +177,11 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		if (!hasPiece(p))
 		{
 			hasPieceIndexes.push_back(p);
-			// torrent->requestPiece(shared_from_this()); // ?????????
+			// if(pieceQueue.empty()) // don't request more than 1 piece at a time from a peer
+			// {
+			// 	std::clog << "IN" << std::endl;
+			// 	torrent->selectPieceAndRequest(shared_from_this());
+			// } 
 		}
 
 		break;
@@ -202,7 +210,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 
 		if (!torrent->isFullyDownloaded())
 		{
-			torrent->initiatePieceRequesting(shared_from_this());
+			torrent->selectPieceAndRequest(shared_from_this());
 		}
 		break;
 	}
@@ -291,7 +299,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 				// pieceQueue will fail due to sendPieceRequest changing position
 				if (torrent->getCompletedPieces() != torrent->getTotalPieces())
 				{
-					torrent->initiatePieceRequesting(shared_from_this());
+					torrent->selectPieceAndRequest(shared_from_this());
 				}
 			}
 		}

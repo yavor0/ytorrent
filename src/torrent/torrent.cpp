@@ -370,7 +370,7 @@ void Torrent::disconnectPeers()
 	// }
 }
 
-void Torrent::initiatePieceRequesting(const std::shared_ptr<Peer> &peer)
+void Torrent::selectPieceAndRequest(const std::shared_ptr<Peer> &peer)
 {
 	size_t index = 0;
 	int32_t priority = std::numeric_limits<int32_t>::max();
