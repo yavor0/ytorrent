@@ -384,7 +384,8 @@ void Torrent::initiatePieceRequesting(const std::shared_ptr<Peer> &peer)
 		if (!p->priority)
 		{
 			p->priority = 1;
-			return peer->sendPieceRequest(i);
+			peer->sendPieceRequest(i);
+			return;
 		}
 
 		if (priority > p->priority)
@@ -407,7 +408,6 @@ std::vector<uint8_t> Torrent::getRawBitfield() const // https://stackoverflow.co
 	boost::to_block_range(bitfield, std::back_inserter(rBitfield)); // this shit puts bits in lsbf and not msbf
 	for (size_t i = 0; i < rBitfield.size(); i++)					// reverse bits
 	{
-		// this shit so ugly i wanna kms
 		uint8_t b = rBitfield[i];
 		b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
 		b = (b & 0xCC) >> 2 | (b & 0x33) << 2;

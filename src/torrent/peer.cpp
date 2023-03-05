@@ -148,7 +148,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		if (state.test(AM_CHOKING)) // literally just ask bro
 		{
 			// 4-byte length, 1-byte packet type
-			static const uint8_t unchoke[5] = {0, 0, 0, 1, UNCHOKE};
+			static const uint8_t unchoke[5] = {0, 0, 0, 1, UNCHOKE}; // just make it big-endian here, dont bother creating OutgoingMessage
 			conn->write(unchoke, sizeof(unchoke));
 			state.reset(AM_CHOKING);
 		}
@@ -268,7 +268,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		else
 		{
 			piece->blocks[blockIndex].size = msgSize;
-			piece->blocks[blockIndex].data = inMsg.getBuffer(msgSize);
+			piece->blocks[blockIndex].data = inMsg.cpyBuffer(msgSize);
 			piece->haveBlocks++;
 
 			if (piece->haveBlocks == piece->totalBlocks)
@@ -348,7 +348,6 @@ void Peer::sendBitfield(std::vector<uint8_t> rBitfield)
 void Peer::sendPieceRequest(uint32_t index)
 {
 	sendInterested();
-
 	uint32_t pieceLength = torrent->pieceSize(index);
 	size_t numBlocks = (int)(ceil(double(pieceLength) / MAX_BLOCK_REQUEST_SIZE)); // https://wiki.theory.org/BitTorrentSpecification#Notes
 

@@ -32,7 +32,7 @@ public:
 	size_t getSize() { return buffSize; }
 	void setSize(size_t size) { buffSize = size; }
 
-	uint8_t *getBuffer(size_t size)
+	uint8_t *cpyBuffer(size_t size)
 	{
 		if (readIndex + size > buffSize)
 			return nullptr;
@@ -69,19 +69,6 @@ public:
 		uint64_t tmp = readAsBE64(&dataBuffer[readIndex]);
 		readIndex += 8;
 		return tmp;
-	}
-	std::string extractNextString() // never used
-	{
-		uint16_t len = extractNextU16();
-		if (!len)
-			return std::string();
-
-		if (readIndex + len > buffSize)
-			return std::string();
-
-		std::string ret((char *)&dataBuffer[readIndex], len);
-		readIndex += len;
-		return ret;
 	}
 };
 #endif

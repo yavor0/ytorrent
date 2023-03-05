@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <assert.h>
+// https://stackoverflow.com/a/2637138/18301773
 
 ///////////////// Little Endian
 inline uint16_t readAsLE16(const uint8_t *addr)
