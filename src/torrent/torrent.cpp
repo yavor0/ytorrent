@@ -294,8 +294,8 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 	// 6 bytes each (first 4 is ip address, last 2 port) all in big endian notation
 	for (size_t i = 0; i < size; i += 6)
 	{
-		const uint8_t *iport = peers + i;
-		uint32_t ip = readAsLE32(iport);
+		const uint8_t *ipAndPort = peers + i;
+		uint32_t ip = readAsLE32(ipAndPort);
 		bool exists = false;
 		// race condition?
 		if (true)
@@ -318,7 +318,7 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 		// Asynchronously connect to that peer, and do not add it to our
 		// active peers list unless a connection was established successfully.
 		auto peer = std::make_shared<Peer>(this);
-		peer->connect(parseIp(ip), std::to_string(readAsBE16(iport + 4)));
+		peer->connect(parseIp(ip), std::to_string(readAsBE16(ipAndPort + 4)));
 	}
 }
 
@@ -489,10 +489,7 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 		return;
 	}
 
-	pieces[index].finished = true;
-	downloadedBytes += pieceData.size();
-	this->completedPieces += 1;
-	const uint8_t *data = &pieceData[0];
+	const uint8_t *data = pieceData.data();
 
 	size_t size = pieceData.size();
 	int64_t beginPos = index * pieceLength;
@@ -510,6 +507,10 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	}
 
 	this->bitfield.set(index);
+	pieces[index].finished = true;
+	downloadedBytes += pieceData.size();
+	this->completedPieces += 1;
+
 	for (const std::shared_ptr<Peer> &peer : activePeers)
 	{
 		peer->sendHave(index);
