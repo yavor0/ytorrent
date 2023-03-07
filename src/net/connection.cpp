@@ -83,11 +83,12 @@ void Connection::read(size_t bytes, const ReadCallback &rc) // bruh https://stac
 	}
 
 	this->readCB = rc;
-	asio::async_read(
+	asio::async_read( // remember: https://stackoverflow.com/a/28931673/18301773
 		this->socket, this->inputStream.prepare(bytes),
 		// Read handler
 		[me = shared_from_this()](const boost::system::error_code &e, size_t readSize)
 		{
+			me->inputStream.commit(readSize); // https://dens.website/tutorials/cpp-asio/dynamic-buffers-2
 			if (e)
 			{
 				return me->handleError(e);
