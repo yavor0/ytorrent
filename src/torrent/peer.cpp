@@ -24,12 +24,7 @@ Peer::Peer(Torrent *t, const std::shared_ptr<Connection> &conn)
 
 Peer::~Peer()
 {
-	std::clog << "\n\n\n\n Destructor CALLED \n\n\n\n"
-			  << std::endl;
-	// for (Piece *p : pieceQueue)
-	// {
-	// 	delete p;
-	// }
+	// std::clog << "\n\n\n\n Destructor CALLED \n\n\n\n" << std::endl;
 	for (size_t i = 0; i < pieceQueue.size(); i++)
 	{
 		delete pieceQueue[i];
@@ -38,34 +33,34 @@ Peer::~Peer()
 
 void Peer::disconnect()
 {
-	torrent->removePeer(shared_from_this(), "disconnect called");
 	conn->close(false);
 }
 
 void Peer::connect(const std::string &ip, const std::string &port)
 {
-	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
+	conn->setErrorCallback(std::bind(&Peer::handleError, this, std::placeholders::_1));
 	conn->connect(ip, port,
-				  [me = shared_from_this()]()
+				  [this]()
 				  {
-					  const uint8_t *myHandshake = (me->torrent)->getHandshake();
-					  (me->conn)->write(myHandshake, 68);
-					  (me->conn)->read(68,
-									   [me, myHandshake](const uint8_t *peerHandshake, size_t size)
+					  const uint8_t *myHandshake = (this->torrent)->getHandshake();
+					  (this->conn)->write(myHandshake, 68);
+					  (this->conn)->read(68,
+									   [this, myHandshake](const uint8_t *peerHandshake, size_t size)
 									   {
 										   if (size != 68 || (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&peerHandshake[28], &myHandshake[28], 20) != 0)
-											   return me->handleError("info hash/protocol type mismatch");
+											   return this->handleError("info hash/protocol type mismatch");
 
 										   std::string peerId((const char *)&peerHandshake[48], 20);
+										   this->peerId = peerId;
 
-										   me->peerId = peerId;
-										   (me->torrent)->addPeer(me->shared_from_this());
-										   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
+										   (this->torrent)->addPeer(this->shared_from_this());
+
+										   (this->conn)->read(4, std::bind(&Peer::handle, this, std::placeholders::_1, std::placeholders::_2));
 									   });
 				  });
 }
 
-void Peer::authenticate()
+void Peer::authenticate() // fix
 {
 	const uint8_t *myHandshake = torrent->getHandshake();
 	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
@@ -96,13 +91,13 @@ void Peer::handle(const uint8_t *data, size_t size)
 	switch (length)
 	{
 	case 0:
-		return conn->read(4, std::bind(&Peer::handle, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+		return conn->read(4, std::bind(&Peer::handle, this, std::placeholders::_1, std::placeholders::_2));
 	default:
 		conn->read(length,
-				   [me = shared_from_this()](const uint8_t *data, size_t size)
+				   [this](const uint8_t *data, size_t size)
 				   {
 					   IncomingMessage in(const_cast<uint8_t *>(&data[1]), size - 1);
-					   me->handleMessage((MessageID)data[0], in);
+					   this->handleMessage((MessageID)data[0], in);
 				   });
 	}
 }
@@ -146,7 +141,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		if (msgSize != 0)
 			return handleError("invalid interested-message size");
 
-		// torrent->handlePeerDebug(shared_from_this(), "interested");
+		// torrent->handlePeerDebug(this, "interested");
 		state.set(PEER_INTERESTED);
 
 		if (state.test(AM_CHOKING)) // literally just ask bro
@@ -180,7 +175,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			// if(pieceQueue.empty()) // don't request more than 1 piece at a time from a peer
 			// {
 			// 	std::clog << "IN" << std::endl;
-			// 	torrent->selectPieceAndRequest(shared_from_this());
+			// 	torrent->selectPieceAndRequest(this);
 			// } 
 		}
 
@@ -210,7 +205,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 
 		if (!torrent->isFullyDownloaded())
 		{
-			torrent->selectPieceAndRequest(shared_from_this());
+			torrent->selectPieceAndRequest(shared_from_this()); // why shared_from_this
 		}
 		break;
 	}
@@ -238,7 +233,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			break;
 		}
 
-		// torrent->handlePeerDebug(shared_from_this(), "requested piece block of length " + bytesToHumanReadable(length, true));
+		// torrent->handlePeerDebug(this, "requested piece block of length " + bytesToHumanReadable(length, true));
 		torrent->handleBlockRequest(shared_from_this(), index, begin, length);
 		break;
 	}
@@ -319,14 +314,14 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		break;
 	}
 	}
-
-	conn->read(4, std::bind(&Peer::handle, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+	conn->read(4, std::bind(&Peer::handle, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void Peer::handleError(const std::string &errmsg)
 {
+	// ORDER IS VERY IMPORTANT!!!!
+	conn->close();
 	torrent->removePeer(shared_from_this(), errmsg);
-	conn->close(false); // close but don't call me again
 }
 
 void Peer::sendHave(uint32_t index)

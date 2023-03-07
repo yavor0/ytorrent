@@ -91,7 +91,6 @@ int main(int argc, char **argv)
 	}
 	std::thread runnerThread = std::thread([]()
 										   { Connection::start(); });
-	runnerThread.detach(); // https://stackoverflow.com/a/7989043/18301773
 
 	std::clog << t->getName() << ": Total size: " << bytesToHumanReadable(t->getTotalSize(), true) << std::endl;
 	Torrent::DownloadError error = t->download(startport++);
@@ -127,5 +126,7 @@ int main(int argc, char **argv)
 	}
 
 	Connection::stop();
+	runnerThread.join(); // https://stackoverflow.com/a/7989043/18301773
+	delete t;
 	return 0;
 }

@@ -1,13 +1,15 @@
 #include "connection.hpp"
+#include <iostream> // remove
 
-std::shared_ptr<asio::io_context> g_io_context = std::make_shared<asio::io_context>();
-boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard((*g_io_context).get_executor());
+asio::io_context g_io_context;
+boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard(g_io_context.get_executor());
 // https://www.reddit.com/r/cpp/comments/jdy2gd/comment/g9bbflz/?utm_source=share&utm_medium=web2x&context=3
-Connection::Connection() : io_context_ptr(g_io_context),
-						   resolver(*io_context_ptr),
-						   socket(*io_context_ptr)
+Connection::Connection() : 
+						   resolver(g_io_context),
+						   socket(g_io_context)
 {
 }
+
 Connection::~Connection()
 {
 	close(false);
@@ -15,8 +17,7 @@ Connection::~Connection()
 
 void Connection::start()
 {
-	std::shared_ptr<asio::io_context> local_io_context_ptr = g_io_context;
-	(*local_io_context_ptr).run();
+	g_io_context.run();
 }
 
 void Connection::stop()
@@ -60,19 +61,9 @@ void Connection::close(bool warn)
 {
 	if (!isConnected())
 	{
-		if (this->errorCB && warn)
-		{
-			this->errorCB("Connection::close(): Called on an already closed connection!");
-		}
 		return;
 	}
 	this->socket.close();
-	boost::system::error_code ec;
-	this->socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-	if (ec && warn && this->errorCB)
-	{
-		this->errorCB(ec.message());
-	}
 }
 
 void Connection::read(size_t bytes, const ReadCallback &rc) // bruh https://stackoverflow.com/q/291871/18301773
@@ -148,7 +139,7 @@ uint32_t Connection::getIP() const
 	const asio::ip::tcp::endpoint ip = this->socket.remote_endpoint(error);
 	if (!error)
 	{
-		return ip.address().to_v4().to_ulong();
+		return asio::detail::socket_ops::host_to_network_long(ip.address().to_v4().to_ulong());
 	}
 
 	return 0;

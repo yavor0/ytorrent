@@ -33,7 +33,8 @@ private:
 	};
 	std::mutex m;
 	Acceptor *acceptor;
-	std::vector<std::shared_ptr<Peer>> activePeers; // make this thread-safe??
+	std::vector<std::shared_ptr<Peer>> activePeers;
+	std::vector<std::shared_ptr<Peer>> connectQueue; // manage shared_ptr lifetime when connecting
 	std::vector<Piece> pieces;
 	File file;
 	std::string downloadDir;

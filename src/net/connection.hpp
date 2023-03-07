@@ -17,7 +17,6 @@ typedef std::function<void()> ConnectCallback;
 typedef std::function<void(const std::string &errorCB)> ErrorCallback;
 
 private:
-	std::shared_ptr<asio::io_context> io_context_ptr;
 	asio::ip::tcp::resolver resolver;
 	asio::ip::tcp::socket socket;
 
@@ -51,7 +50,7 @@ public:
 	void setErrorCallback(const ErrorCallback &errorCB) { this->errorCB = errorCB; }
 	void resetAllCallbacks() { this->readCB = nullptr; this->connCB = nullptr; this->errorCB=nullptr;} // this is very dangerous
 };
-extern std::shared_ptr<asio::io_context> g_io_context;
+extern asio::io_context g_io_context;
 extern boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard;
 
 #endif

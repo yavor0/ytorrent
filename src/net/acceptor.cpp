@@ -2,9 +2,8 @@
 
 Acceptor::Acceptor(uint16_t port)
 	: 
-	  io_context_ptr(g_io_context),
 	  started(false),
-	  tcpAcceptor(*g_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port))
+	  tcpAcceptor(g_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port))
 
 {
 	tcpAcceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true)); // https://prnt.sc/F8LJGCuHN8th
