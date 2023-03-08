@@ -34,7 +34,7 @@ private:
 	std::mutex m;
 	Acceptor *acceptor;
 	std::vector<std::shared_ptr<Peer>> activePeers;
-	std::vector<std::shared_ptr<Peer>> connectQueue; // manage shared_ptr lifetime when connecting
+	std::vector<std::shared_ptr<Peer>> handshakingPeers; // manage shared_ptr lifetime when connecting !!ACCUMULATES WAY TOO MANY PEERS, FIX!!
 	std::vector<Piece> pieces;
 	File file;
 	std::string downloadDir;
@@ -67,6 +67,7 @@ private:
 	int64_t pieceSize(size_t pieceIndex) const;
 	inline bool pieceDone(size_t pieceIndex) const { return pieces[pieceIndex].finished; }
 
+	void handshaked(const std::shared_ptr<Peer> &peer);
 	void addPeer(const std::shared_ptr<Peer> &peer);
 	void removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg);
 	void disconnectPeers();

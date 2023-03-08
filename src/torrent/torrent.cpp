@@ -23,12 +23,11 @@ Torrent::Torrent() : acceptor(nullptr),
 	memset(handshake, 0, 68);
 	memset(peerId, 0, 20);
 	activePeers.reserve(100); // use constant
-	connectQueue.reserve(100); // use constant
+	handshakingPeers.reserve(100); // use constant
 }
 
 Torrent::~Torrent()
 {
-	// maybe make .isOpen atomic???
 	if (file.fp != nullptr)
 	{
 		fclose(file.fp);
@@ -37,12 +36,6 @@ Torrent::~Torrent()
 	if (this->acceptor != nullptr)
 	{
 		delete this->acceptor;
-	}
-	std::clog << "Connect queue size: " << connectQueue.size() << std::endl;
-	std::clog << "Active peers size: " << activePeers.size() << std::endl;
-	for(size_t i = 0; i<activePeers.size();i++)
-	{
-		std::clog << activePeers[i].use_count() << std::endl;
 	}
 }
 
@@ -97,9 +90,7 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 		memcpy(&piece.hash[0], piecesStr.c_str() + i, 20);
 		this->pieces.push_back(piece);
 	}
-	// this->bitfield.resize(this->pieces.size()); // Use this
-	this->bitfield = boost::dynamic_bitset<uint8_t>(this->pieces.size());
-	// std::clog << "\n\n\n" << this->bitfield.capacity() << "\n\n\n" << std::endl;
+	this->bitfield.resize(this->pieces.size());
 
 	mkdir(downloadDir.c_str(), 0700); // TODO: ADD ERROR HANDLING
 	chdir(downloadDir.c_str());
@@ -198,13 +189,14 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 		this->acceptor = new Acceptor(port); // this could throw an exception. how do i handle it?
 	}
 
-	// // async accept incoming connections
-	// acceptor->initiateAsyncAcceptLoop(
-	// 	[this](const std::shared_ptr<Connection> &conn)
-	// 	{
-	// 		auto peer = std::make_shared<Peer>(this, conn);
-	// 		peer->authenticate();
-	// 	});
+	// async accept incoming connections
+	acceptor->initiateAsyncAcceptLoop(
+		[this](const std::shared_ptr<Connection> &conn)
+		{
+			auto peer = std::make_shared<Peer>(this, conn);
+			this->handshakingPeers.push_back(peer);
+			peer->authenticate();
+		});
 
 	while (completedPieces != piecesNeeded)
 	{
@@ -213,7 +205,7 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 			mainTracker->query(buildTrackerQuery(TrackerEvent::NONE));
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		// displayDownloadProgress();
+		displayDownloadProgress();
 	}
 	std::cout << std::endl; // make up for the last \r
 	// https://stackoverflow.com/a/17941712/18301773
@@ -267,6 +259,7 @@ void Torrent::customDownload(std::string peerIp, std::string peerPort)
 	startDownloadTime = std::chrono::high_resolution_clock::now();
 	size_t piecesNeeded = pieces.size();
 	auto peer = std::make_shared<Peer>(this);
+	handshakingPeers.push_back(peer);
 	peer->connect(peerIp, peerPort);
 	while (completedPieces != piecesNeeded)
 	{
@@ -308,7 +301,7 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 		const uint8_t *ipAndPort = peers + i;
 		uint32_t ip = readAsLE32(ipAndPort);
 		bool exists = false;
-		// race condition?
+		// optimize
 		if (true)
 		{
 			std::lock_guard<std::mutex> guard(this->m);
@@ -324,24 +317,39 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 			{
 				continue;
 			}
+		}
+
 		// Asynchronously connect to that peer, and do not add it to our
 		// active peers list unless a connection was established successfully.
 		std::shared_ptr<Peer> peer = std::make_shared<Peer>(this);
-		connectQueue.push_back(peer); // to keep it alive, will delete upon successful connection
+		handshakingPeers.push_back(peer); // to keep it alive, will delete upon successful connection
 		peer->connect(parseIp(ip), std::to_string(readAsBE16(ipAndPort + 4)));
-		}
 	}
+}
+
+void Torrent::handshaked(const std::shared_ptr<Peer> &peer)
+{
+	auto it = std::find(handshakingPeers.begin(), handshakingPeers.end(), peer);
+	handshakingPeers.erase(it);
+	addPeer(peer);
 }
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
 {	
 	std::lock_guard<std::mutex> guard(this->m);
 	activePeers.push_back(peer);
-	std::clog << name << ": Peers: " << activePeers.size() << std::endl;
+	logFile << name << ": Peers: " << activePeers.size() << std::endl;
 }
 
 void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg)
 {
+	// doesn't belong here
+	auto it1 = std::find(handshakingPeers.begin(), handshakingPeers.end(), peer);
+	if(it1 != handshakingPeers.end())
+	{
+		handshakingPeers.erase(it1);
+	}
+
 	auto it = std::find(activePeers.begin(), activePeers.end(), peer);
 	if (it != activePeers.end())
 	{
@@ -349,21 +357,24 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 		activePeers.erase(it);
 	}
 
-	std::clog << name << ": " << peer->getStrIp() << ": " << errmsg << std::endl;
-	std::clog << name << ": Peers: " << activePeers.size() << std::endl;
+	logFile << name << ": " << peer->getStrIp() << ": " << errmsg << std::endl;
+	logFile << name << ": Peers: " << activePeers.size() << std::endl;
 }
 
 void Torrent::disconnectPeers()
 {
-	for (size_t i = 0; i < this->connectQueue.size(); i++)
+	if(acceptor)
 	{
-		connectQueue[i]->disconnect();
+		acceptor->stop();
 	}
-	connectQueue.clear();
+	
+	for (size_t i = 0; i < this->handshakingPeers.size(); i++)
+	{
+		handshakingPeers[i]->disconnect();
+	}
+	handshakingPeers.clear();
 	for (size_t i = 0; i < this->activePeers.size(); i++)
 	{
-		std::clog << "\n\n\n\nAAAAAAAAAAAAAAAAAAA: " << activePeers[i].use_count() << "\n\n\n" << std::endl;
-
 		activePeers[i]->disconnect();
 	}
 }
@@ -451,19 +462,19 @@ int64_t Torrent::pieceSize(size_t pieceIndex) const
 
 void Torrent::handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error)
 {
-	std::clog << name << ": tracker request failed: " << error << std::endl;
+	std::cerr << name << ": tracker request failed: " << error << std::endl;
 }
 
 void Torrent::handlePeerDebug(const std::shared_ptr<Peer> &peer, const std::string &msg)
 {
-	std::clog << name << ": " << peer->getStrIp() << " " << msg << std::endl;
+	logFile << name << ": " << peer->getStrIp() << " " << msg << std::endl;
 }
 
 void Torrent::displayDownloadProgress() const
 {
 	std::clog << "\r" << name
 			  << ": Completed " << completedPieces << "/" << pieces.size() << " pieces "
-			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
+			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Hash misses: " << pieceHashMisses << ")"
 			  << " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
 			  << ", ETA: " << formatTime(calculateETA()) << "       "
 			  << std::flush;
@@ -472,7 +483,7 @@ void Torrent::displayDownloadProgress() const
 void Torrent::displaySeedProgress() const
 {
 	std::clog << "\r" << name << ": "
-			  << "(Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
+			  << "(Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Hash misses: " << pieceHashMisses << ")"
 			  << "       "
 			  << std::flush;
 }
@@ -509,12 +520,6 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 	downloadedBytes += pieceData.size();
 	this->completedPieces += 1;
 
-	std::clog << name
-			  << ": Completed " << completedPieces << "/" << pieces.size() << " pieces "
-			  << "(Downloaded: " << bytesToHumanReadable(downloadedBytes, true) << ", Uploaded: " << bytesToHumanReadable(uploadedBytes, true) << ", Wasted: " << bytesToHumanReadable(wastedBytes, true) << ", Piece hash misses: " << pieceHashMisses << ")"
-			  << " Download speed: " << std::fixed << std::showpoint << std::setprecision(2) << getDownloadSpeed() << " MB/s"
-			  << ", ETA: " << formatTime(calculateETA())
-			  << std::endl;
 	for (const std::shared_ptr<Peer> &peer : activePeers)
 	{
 		peer->sendHave(index);

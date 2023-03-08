@@ -8,7 +8,6 @@ Peer::Peer(Torrent *t)
 	  state(4)
 {
 	conn = std::make_shared<Connection>(); // https://stackoverflow.com/a/5558955/18301773
-	// state = boost::dynamic_bitset<>(4);
 	state.set(AM_CHOKING);
 	state.set(PEER_CHOKING);
 }
@@ -33,7 +32,7 @@ Peer::~Peer()
 
 void Peer::disconnect()
 {
-	conn->close(false);
+	conn->close();
 }
 
 void Peer::connect(const std::string &ip, const std::string &port)
@@ -44,41 +43,44 @@ void Peer::connect(const std::string &ip, const std::string &port)
 				  {
 					  const uint8_t *myHandshake = (this->torrent)->getHandshake();
 					  (this->conn)->write(myHandshake, 68);
-					  (this->conn)->read(68,
-									   [this, myHandshake](const uint8_t *peerHandshake, size_t size)
-									   {
-										   if (size != 68 || (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&peerHandshake[28], &myHandshake[28], 20) != 0)
-											   return this->handleError("info hash/protocol type mismatch");
+					  (this->conn)->read(68, [this, myHandshake](const uint8_t *peerHandshake, size_t size)
+										 {
+										   if (size != 68 || (peerHandshake[0] != 19 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&peerHandshake[28], &myHandshake[28], 20) != 0)
+										   {
+												this->handleError("info hash/protocol type mismatch");
+												return;
+										   }
 
 										   std::string peerId((const char *)&peerHandshake[48], 20);
 										   this->peerId = peerId;
 
-										   (this->torrent)->addPeer(this->shared_from_this());
-
-										   (this->conn)->read(4, std::bind(&Peer::handle, this, std::placeholders::_1, std::placeholders::_2));
-									   });
+										   (this->torrent)->handshaked(this->shared_from_this());
+										   (this->conn)->read(4, std::bind(&Peer::handle, this, std::placeholders::_1, std::placeholders::_2)); });
 				  });
 }
 
-void Peer::authenticate() // fix
+void Peer::authenticate()
 {
 	const uint8_t *myHandshake = torrent->getHandshake();
-	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
+	conn->setErrorCallback(std::bind(&Peer::handleError, this, std::placeholders::_1));
 	conn->read(68,
-			   [me = shared_from_this(), myHandshake](const uint8_t *peerHandshake, size_t size)
+			   [this, myHandshake](const uint8_t *peerHandshake, size_t size)
 			   {
 				   if (size != 68 || (peerHandshake[0] != 0x13 && memcmp(&peerHandshake[1], "BitTorrent protocol", 19) != 0) || memcmp(&myHandshake[28], &peerHandshake[28], 20) != 0)
-					   return me->handleError("info hash/protocol type mismatch");
+				   {
+					   handleError("info hash/protocol type mismatch");
+					   return;
+				   }
 
 				   std::string peerId((const char *)&peerHandshake[48], 20);
-				   me->peerId = peerId;
-				   (me->conn)->write(myHandshake, 68);
-				   (me->torrent)->addPeer(me);
+				   this->peerId = peerId;
+				   (this->conn)->write(myHandshake, 68);
+				   (this->torrent)->handshaked(this->shared_from_this());
 
-				   me->sendBitfield((me->torrent)->getRawBitfield());
+				   this->sendBitfield((this->torrent)->getRawBitfield());
 
-				   (me->torrent)->handlePeerDebug(me, "connected! (" + std::to_string((me->torrent)->getActivePeers()) + " established)");
-				   (me->conn)->read(4, std::bind(&Peer::handle, me, std::placeholders::_1, std::placeholders::_2));
+				   (this->torrent)->handlePeerDebug(shared_from_this(), "connected! (" + std::to_string((this->torrent)->getActivePeers()) + " established)");
+				   (this->conn)->read(4, std::bind(&Peer::handle, this, std::placeholders::_1, std::placeholders::_2));
 			   });
 }
 
@@ -127,11 +129,10 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 
 		for (const Piece *piece : pieceQueue)
 		{
-			if(piece!=nullptr)
+			if (piece != nullptr)
 			{
 				requestPiece(piece->index);
 			}
-			
 		}
 
 		break;
@@ -172,11 +173,6 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		if (!hasPiece(p))
 		{
 			hasPieceIndexes.push_back(p);
-			// if(pieceQueue.empty()) // don't request more than 1 piece at a time from a peer
-			// {
-			// 	std::clog << "IN" << std::endl;
-			// 	torrent->selectPieceAndRequest(this);
-			// } 
 		}
 
 		break;
@@ -320,7 +316,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 void Peer::handleError(const std::string &errmsg)
 {
 	// ORDER IS VERY IMPORTANT!!!!
-	conn->close();
+	disconnect();
 	torrent->removePeer(shared_from_this(), errmsg);
 }
 
@@ -352,7 +348,7 @@ void Peer::sendPieceRequest(uint32_t index)
 {
 	sendInterested();
 	uint32_t pieceLength = torrent->pieceSize(index);
-	size_t numBlocks = (int)(ceil(double(pieceLength) / MAX_BLOCK_REQUEST_SIZE)); // https://wiki.theory.org/BitTorrentSpecification#Notes
+	size_t numBlocks = (size_t)(ceil(double(pieceLength) / MAX_BLOCK_REQUEST_SIZE)); // https://wiki.theory.org/BitTorrentSpecification#Notes
 
 	Piece *piece = new Piece();
 	piece->index = index;
@@ -374,7 +370,7 @@ void Peer::sendPieceBlock(uint32_t index, uint32_t begin, uint8_t *block, uint32
 	out.addU8((uint8_t)PIECE_BLOCK);
 	out.addU32(index);
 	out.addU32(begin);
-	out.addCustom(block, length); //already in be
+	out.addCustom(block, length); // already in be
 
 	conn->write(out);
 }

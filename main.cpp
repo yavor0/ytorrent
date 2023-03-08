@@ -105,15 +105,16 @@ int main(int argc, char **argv)
 		++errors;
 		break;
 	case Torrent::DownloadError::TRACKER_QUERY_FAILURE:
-		std::clog << t->getName() << ": The tracker(s) has failed to respond in time or some internal error has occured" << std::endl;
+		std::clog << t->getName() << ": The tracker has failed to respond in time or some internal error has occured" << std::endl;
 		++errors;
 		break;
 	}
 	if (error != Torrent::DownloadError::COMPLETED)
 	{
 		Connection::stop();
+		runnerThread.join();		
+		delete t;
 		return 1;
-		// std::terminate(); // https://stackoverflow.com/a/12207835/18301773
 	}
 
 	std::clog << t->getName() << ": Downloaded: " << bytesToHumanReadable(t->getDownloadedBytes(), true) << std::endl;

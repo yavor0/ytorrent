@@ -11,7 +11,7 @@ public:
 
 	void initiateAsyncAcceptLoop(const AcceptCallBack &acceptCB);
 	bool isStarted() const;
-
+	void stop();
 private:
 	bool started; 
 	asio::ip::tcp::acceptor tcpAcceptor;

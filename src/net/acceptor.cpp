@@ -11,8 +11,17 @@ Acceptor::Acceptor(uint16_t port)
 
 Acceptor::~Acceptor()
 {
+	if(isStarted())
+	{
+		stop();
+	}
+}
+
+void Acceptor::stop()
+{
 	tcpAcceptor.cancel();
 	tcpAcceptor.close();
+	started=false;
 }
 
 bool Acceptor::isStarted() const

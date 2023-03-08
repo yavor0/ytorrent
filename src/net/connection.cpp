@@ -3,7 +3,7 @@
 
 asio::io_context g_io_context;
 boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g_work_guard(g_io_context.get_executor());
-// https://www.reddit.com/r/cpp/comments/jdy2gd/comment/g9bbflz/?utm_source=share&utm_medium=web2x&context=3
+
 Connection::Connection() : 
 						   resolver(g_io_context),
 						   socket(g_io_context)
@@ -12,7 +12,7 @@ Connection::Connection() :
 
 Connection::~Connection()
 {
-	close(false);
+	close();
 }
 
 void Connection::start()
@@ -22,7 +22,6 @@ void Connection::start()
 
 void Connection::stop()
 {
-	// g_io_context.stop(); // https://stackoverflow.com/a/18555384/18301773
 	g_work_guard.reset();
 }
 
@@ -38,7 +37,8 @@ void Connection::connect(const std::string &host, const std::string &port, const
 		{
 			if (e)
 			{
-				return me->handleError(e);
+				me->handleError(e);
+				return;
 			}
 			// Connect handler
 			me->socket.async_connect(
@@ -47,7 +47,8 @@ void Connection::connect(const std::string &host, const std::string &port, const
 				{
 					if (e)
 					{
-						return me->handleError(e);
+						me->handleError(e);
+						return;
 					}
 					else if (me->connCB)
 					{
@@ -57,12 +58,15 @@ void Connection::connect(const std::string &host, const std::string &port, const
 		});
 }
 
-void Connection::close(bool warn)
+void Connection::close()
 {
 	if (!isConnected())
 	{
 		return;
 	}
+	// due to still unknown to me reasons when on graceful disconnect aka. .shutdown is called sometimes an error is thrown 
+	// boost::system::error_code ec;
+	// this->socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec); // https://stackoverflow.com/a/3068106/18301773
 	this->socket.close();
 }
 
@@ -82,7 +86,8 @@ void Connection::read(size_t bytes, const ReadCallback &rc) // bruh https://stac
 			me->inputStream.commit(readSize); // https://dens.website/tutorials/cpp-asio/dynamic-buffers-2
 			if (e)
 			{
-				return me->handleError(e);
+				me->handleError(e);
+				return;
 			}
 
 			if (me->readCB)

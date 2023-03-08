@@ -36,7 +36,7 @@ public:
 	static void stop();
 
 	void connect(const std::string &host, const std::string &port, const ConnectCallback &connCB);
-	void close(bool warn = true); // Pass false in ErrorCallback otherwise possible infinite recursion
+	void close();
 	bool isConnected() const { return this->socket.is_open(); }
 
 	inline void write(const OutgoingMessage &om) { write(om.data(), om.size()); }
