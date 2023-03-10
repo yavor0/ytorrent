@@ -60,6 +60,7 @@ void Connection::connect(const std::string &host, const std::string &port, const
 
 void Connection::close()
 {
+	this->errorCB = nullptr;
 	if (!isConnected())
 	{
 		return;
@@ -126,6 +127,7 @@ void Connection::handleError(const boost::system::error_code &error)
 	if (this->errorCB)
 	{
 		this->errorCB(error.message());
+		this->errorCB = nullptr;
 	}
 	if (isConnected()) // User is free to close the connection before me
 	{

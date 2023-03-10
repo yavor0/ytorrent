@@ -31,7 +31,7 @@ private:
 		int32_t priority;
 		uint8_t hash[20];
 	};
-	std::mutex m;
+	std::mutex peerContainersMutex;
 	Acceptor *acceptor;
 	std::vector<std::shared_ptr<Peer>> activePeers;
 	std::vector<std::shared_ptr<Peer>> handshakingPeers; // manage shared_ptr lifetime when connecting !!ACCUMULATES WAY TOO MANY PEERS, FIX!!

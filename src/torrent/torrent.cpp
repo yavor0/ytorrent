@@ -209,12 +209,6 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	}
 	std::cout << std::endl; // make up for the last \r
 	// https://stackoverflow.com/a/17941712/18301773
-	if (file.fp != nullptr)
-	{
-		fclose(file.fp);
-		file.fp = nullptr;
-	}
-
 	disconnectPeers();
 	TrackerEvent event;
 	event = (completedPieces == piecesNeeded) ? TrackerEvent::COMPLETED : TrackerEvent::STOPPED;
@@ -304,7 +298,7 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 		// optimize
 		if (true)
 		{
-			std::lock_guard<std::mutex> guard(this->m);
+			std::lock_guard<std::mutex> guard(this->peerContainersMutex);
 			for (size_t i = 0; i < activePeers.size(); i++)
 			{
 				if (activePeers[i]->getRawIp() == ip)
@@ -317,18 +311,18 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 			{
 				continue;
 			}
-		}
-
 		// Asynchronously connect to that peer, and do not add it to our
 		// active peers list unless a connection was established successfully.
 		std::shared_ptr<Peer> peer = std::make_shared<Peer>(this);
 		handshakingPeers.push_back(peer); // to keep it alive, will delete upon successful connection
 		peer->connect(parseIp(ip), std::to_string(readAsBE16(ipAndPort + 4)));
+		}
 	}
 }
 
 void Torrent::handshaked(const std::shared_ptr<Peer> &peer)
 {
+	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
 	auto it = std::find(handshakingPeers.begin(), handshakingPeers.end(), peer);
 	handshakingPeers.erase(it);
 	addPeer(peer);
@@ -336,13 +330,13 @@ void Torrent::handshaked(const std::shared_ptr<Peer> &peer)
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
 {	
-	std::lock_guard<std::mutex> guard(this->m);
 	activePeers.push_back(peer);
 	logFile << name << ": Peers: " << activePeers.size() << std::endl;
 }
 
 void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg)
 {
+	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
 	// doesn't belong here
 	auto it1 = std::find(handshakingPeers.begin(), handshakingPeers.end(), peer);
 	if(it1 != handshakingPeers.end())
@@ -353,7 +347,6 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 	auto it = std::find(activePeers.begin(), activePeers.end(), peer);
 	if (it != activePeers.end())
 	{
-		std::lock_guard<std::mutex> guard(this->m);
 		activePeers.erase(it);
 	}
 

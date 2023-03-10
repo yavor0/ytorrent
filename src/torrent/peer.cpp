@@ -32,6 +32,7 @@ Peer::~Peer()
 
 void Peer::disconnect()
 {
+	std::lock_guard<std::mutex> guard(this->torrent->peerContainersMutex);
 	conn->close();
 }
 
