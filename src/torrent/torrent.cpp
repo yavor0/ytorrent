@@ -360,12 +360,27 @@ void Torrent::disconnectPeers()
 	{
 		acceptor->stop();
 	}
-	
-	for (size_t i = 0; i < this->handshakingPeers.size(); i++)
+
+   size_t peerCount = 0;
+   if(true)
+   {
+      std::lock_guard<std::mutex> guard(this->peerContainersMutex);
+      peerCount = this->handshakingPeers.size();
+   }
+
+	for (size_t i = 0; i < peerCount; i++)
 	{
+      /*
+      std::cout<<"i = "<<i<<"\n";
+      std::cout<<"use count = "<<handshakingPeers[i].use_count()<<"\n";
+      std::cout<<"get() = "<<handshakingPeers[i].get()<<"\n";
+      */
+	 
 		handshakingPeers[i]->disconnect();
 	}
+
 	handshakingPeers.clear();
+
 	for (size_t i = 0; i < this->activePeers.size(); i++)
 	{
 		activePeers[i]->disconnect();
