@@ -323,13 +323,18 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 void Torrent::handshaked(const std::shared_ptr<Peer> &peer)
 {
 	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
-	auto it = std::find(handshakingPeers.begin(), handshakingPeers.end(), peer);
+   auto equalityCriteria = [&peer](const std::shared_ptr<Peer>& current)
+   {
+      return peer->getRawIp() == current->getRawIp();
+   };
+
+	auto it = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
 	handshakingPeers.erase(it);
 	addPeer(peer);
 }
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
-{	
+{
 	activePeers.push_back(peer);
 	logFile << name << ": Peers: " << activePeers.size() << std::endl;
 }
@@ -337,14 +342,19 @@ void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
 void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg)
 {
 	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
+	auto equalityCriteria = [&peer](const std::shared_ptr<Peer>& current)
+	{
+		return peer->getRawIp() == current->getRawIp();
+	};
+
 	// doesn't belong here
-	auto it1 = std::find(handshakingPeers.begin(), handshakingPeers.end(), peer);
+	auto it1 = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
 	if(it1 != handshakingPeers.end())
 	{
 		handshakingPeers.erase(it1);
 	}
 
-	auto it = std::find(activePeers.begin(), activePeers.end(), peer);
+	auto it = std::find_if(activePeers.begin(), activePeers.end(), equalityCriteria);
 	if (it != activePeers.end())
 	{
 		activePeers.erase(it);

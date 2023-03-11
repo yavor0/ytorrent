@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(ytorrent)
 add_compile_options(-Wall -Wextra -Wpedantic -Wunused-result -march=native -ftrapv
-    -fsanitize=thread
-#   -fsanitize=address,
+    # -fsanitize=thread
+  -fsanitize=address,
 #   -fsanitize-recover=address,
         -O0 -g3) #-Wconversion -Wshadow
 add_link_options(
-   -fsanitize=thread
-#   -fsanitize=address,
+#    -fsanitize=thread
+  -fsanitize=address,
 #   -fsanitize-recover=address,
 )
 add_executable(${PROJECT_NAME}
