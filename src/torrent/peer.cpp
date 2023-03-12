@@ -32,13 +32,13 @@ Peer::~Peer()
 
 void Peer::disconnect()
 {
-	std::lock_guard<std::mutex> guard(this->torrent->peerContainersMutex);
 	conn->close();
+	conn->setErrorCallback(nullptr);
 }
 
 void Peer::connect(const std::string &ip, const std::string &port)
 {
-	conn->setErrorCallback(std::bind(&Peer::handleError, this, std::placeholders::_1));
+	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
 	conn->connect(ip, port,
 				  [this]()
 				  {
@@ -63,7 +63,7 @@ void Peer::connect(const std::string &ip, const std::string &port)
 void Peer::authenticate()
 {
 	const uint8_t *myHandshake = torrent->getHandshake();
-	conn->setErrorCallback(std::bind(&Peer::handleError, this, std::placeholders::_1));
+	conn->setErrorCallback(std::bind(&Peer::handleError, shared_from_this(), std::placeholders::_1));
 	conn->read(68,
 			   [this, myHandshake](const uint8_t *peerHandshake, size_t size)
 			   {
@@ -317,8 +317,9 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 void Peer::handleError(const std::string &errmsg)
 {
 	// ORDER IS VERY IMPORTANT!!!!
-	disconnect();
 	torrent->removePeer(shared_from_this(), errmsg);
+	std::lock_guard<std::mutex> guard(this->torrent->peerContainersMutex);
+	disconnect();
 }
 
 void Peer::sendHave(uint32_t index)

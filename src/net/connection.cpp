@@ -23,6 +23,7 @@ void Connection::start()
 void Connection::stop()
 {
 	g_work_guard.reset();
+	g_io_context.stop();
 }
 
 void Connection::connect(const std::string &host, const std::string &port, const ConnectCallback &cb)
@@ -60,14 +61,13 @@ void Connection::connect(const std::string &host, const std::string &port, const
 
 void Connection::close()
 {
-	this->errorCB = nullptr;
 	if (!isConnected())
 	{
 		return;
 	}
 	// due to still unknown to me reasons when on graceful disconnect aka. .shutdown is called sometimes an error is thrown 
-	// boost::system::error_code ec;
-	// this->socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec); // https://stackoverflow.com/a/3068106/18301773
+	boost::system::error_code ec;
+	this->socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec); // https://stackoverflow.com/a/3068106/18301773
 	this->socket.close();
 }
 
@@ -127,7 +127,6 @@ void Connection::handleError(const boost::system::error_code &error)
 	if (this->errorCB)
 	{
 		this->errorCB(error.message());
-		this->errorCB = nullptr;
 	}
 	if (isConnected()) // User is free to close the connection before me
 	{

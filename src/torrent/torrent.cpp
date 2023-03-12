@@ -351,12 +351,12 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 		return peer->getRawIp() == current->getRawIp();
 	};
 
-	// // doesn't belong here
-	// auto it1 = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
-	// if(it1 != handshakingPeers.end())
-	// {
-	// 	handshakingPeers.erase(it1);
-	// }
+	// doesn't belong here
+	auto it1 = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
+	if(it1 != handshakingPeers.end())
+	{
+		handshakingPeers.erase(it1);
+	}
 
 	auto it = std::find_if(activePeers.begin(), activePeers.end(), equalityCriteria);
 	if (it != activePeers.end())
@@ -370,17 +370,13 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 
 void Torrent::disconnectPeers()
 {
+	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
 	if(acceptor)
 	{
 		acceptor->stop();
 	}
 
    size_t peerCount = 0;
-   if(true)
-   {
-      std::lock_guard<std::mutex> guard(this->peerContainersMutex);
-      peerCount = this->handshakingPeers.size();
-   }
 
 	for (size_t i = 0; i < peerCount; i++)
 	{
@@ -393,7 +389,7 @@ void Torrent::disconnectPeers()
 		handshakingPeers[i]->disconnect();
 	}
 
-	handshakingPeers.clear();
+	// handshakingPeers.clear();
 
 	for (size_t i = 0; i < this->activePeers.size(); i++)
 	{
@@ -527,14 +523,14 @@ void Torrent::handlePieceCompleted(const std::shared_ptr<Peer> &peer, uint32_t i
 
 	if (fseek(file.fp, beginPos - file.begin, SEEK_SET) != 0)
 	{
-		throw new std::runtime_error("fseek failed, errno = " + std::to_string(errno)); // errno is global
+		throw std::runtime_error("fseek failed, errno = " + std::to_string(errno)); // errno is global
 	}
 
 	size_t wrote = fwrite(data, 1, size, file.fp); // faster than fstream because it doesn't do any buffering
 	if (wrote != size)
 	{
 		// use file.path instead of this->name
-		throw new std::runtime_error("fwrite failed in file: " + this->name + "saved to directory: " + this->downloadDir + " errno = " + std::to_string(errno));
+		throw std::runtime_error("fwrite failed in file: " + this->name + "saved to directory: " + this->downloadDir + " errno = " + std::to_string(errno));
 	}
 
 	this->bitfield.set(index);
