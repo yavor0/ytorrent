@@ -67,7 +67,7 @@ private:
 	int64_t pieceSize(size_t pieceIndex) const;
 	inline bool pieceDone(size_t pieceIndex) const { return pieces[pieceIndex].finished; }
 
-	void handshaked(const std::shared_ptr<Peer> &peer);
+	void handshaked(const std::shared_ptr<Peer> peer);
 	void addPeer(const std::shared_ptr<Peer> &peer);
 	void removePeer(const std::shared_ptr<Peer> &peer, const std::string &errmsg);
 	void disconnectPeers();
@@ -102,7 +102,7 @@ public:
 	~Torrent();
 
 	ParseResult parseFile(const std::string &fileName, const std::string &downloadDir);
-	DownloadError download(uint16_t port);
+	DownloadError download(uint16_t port, bool seedAfter=false);
 	void seed(uint16_t port);
 
 	void customDownload(std::string ip, std::string port);

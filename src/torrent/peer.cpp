@@ -358,7 +358,7 @@ void Peer::sendPieceRequest(uint32_t index)
 	piece->blocks = new Block[numBlocks];
 
 	pieceQueue.push_back(piece);
-	if (!state.test(PEER_CHOKING)) // bro choked me in the meantime
+	if (!state.test(PEER_CHOKING))
 	{
 		requestPiece(index);
 	}

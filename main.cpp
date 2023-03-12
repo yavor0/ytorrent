@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 										   { Connection::start(); });
 
 	std::clog << t->getName() << ": Total size: " << bytesToHumanReadable(t->getTotalSize(), true) << std::endl;
-	Torrent::DownloadError error = t->download(startport++);
+	Torrent::DownloadError error = t->download(startport++, seed);
 	switch (error)
 	{
 	case Torrent::DownloadError::COMPLETED:

@@ -176,7 +176,7 @@ TrackerQuery Torrent::buildTrackerQuery(TrackerEvent event) const // MOVE THIS F
 	return q;
 }
 
-Torrent::DownloadError Torrent::download(uint16_t port)
+Torrent::DownloadError Torrent::download(uint16_t port, bool seedAfter /*false*/)
 {
 	size_t piecesNeeded = pieces.size();
 	startDownloadTime = std::chrono::high_resolution_clock::now();
@@ -209,7 +209,10 @@ Torrent::DownloadError Torrent::download(uint16_t port)
 	}
 	std::cout << std::endl; // make up for the last \r
 	// https://stackoverflow.com/a/17941712/18301773
-	disconnectPeers();
+	if(!seedAfter)
+	{
+		disconnectPeers();
+	}
 	TrackerEvent event;
 	event = (completedPieces == piecesNeeded) ? TrackerEvent::COMPLETED : TrackerEvent::STOPPED;
 
@@ -229,6 +232,7 @@ void Torrent::seed(uint16_t port)
 			[this](const std::shared_ptr<Connection> &conn)
 			{
 				auto peer = std::make_shared<Peer>(this, conn);
+				this->handshakingPeers.push_back(peer);
 				peer->authenticate();
 			});
 	}
@@ -266,8 +270,8 @@ void Torrent::customDownload(std::string peerIp, std::string peerPort)
 		fclose(file.fp);
 		file.fp = nullptr;
 	}
+	peer->disconnect();
 }
-
 bool Torrent::validateTracker(const std::string &turl, const TrackerQuery &q, uint16_t myPort)
 {
 	UrlMeta urlMeta = parseTrackerUrl(turl);
@@ -320,9 +324,10 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 	}
 }
 
-void Torrent::handshaked(const std::shared_ptr<Peer> &peer)
+void Torrent::handshaked(const std::shared_ptr<Peer> peer)
 {
 	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
+	addPeer(peer);
    auto equalityCriteria = [&peer](const std::shared_ptr<Peer>& current)
    {
       return peer->getRawIp() == current->getRawIp();
@@ -330,7 +335,6 @@ void Torrent::handshaked(const std::shared_ptr<Peer> &peer)
 
 	auto it = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
 	handshakingPeers.erase(it);
-	addPeer(peer);
 }
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
@@ -347,12 +351,12 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 		return peer->getRawIp() == current->getRawIp();
 	};
 
-	// doesn't belong here
-	auto it1 = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
-	if(it1 != handshakingPeers.end())
-	{
-		handshakingPeers.erase(it1);
-	}
+	// // doesn't belong here
+	// auto it1 = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
+	// if(it1 != handshakingPeers.end())
+	// {
+	// 	handshakingPeers.erase(it1);
+	// }
 
 	auto it = std::find_if(activePeers.begin(), activePeers.end(), equalityCriteria);
 	if (it != activePeers.end())
