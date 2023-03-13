@@ -8,6 +8,7 @@
 #include <bencoding/bencoding.h>
 #include <vector>
 #include <string>
+#include <unordered_set>
 #include <fstream>
 #include <mutex>
 #include <chrono>
@@ -34,7 +35,7 @@ private:
 	std::mutex peerContainersMutex;
 	Acceptor *acceptor;
 	std::vector<std::shared_ptr<Peer>> activePeers;
-	std::vector<std::shared_ptr<Peer>> handshakingPeers; // manage shared_ptr lifetime when connecting !!ACCUMULATES WAY TOO MANY PEERS, FIX!!
+	std::unordered_set<uint32_t> blackListed;
 	std::vector<Piece> pieces;
 	File file;
 	std::string downloadDir;

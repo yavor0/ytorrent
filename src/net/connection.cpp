@@ -65,6 +65,7 @@ void Connection::close()
 	{
 		return;
 	}
+	std::lock_guard<std::mutex> guard(this->connectedMutex);
 	// due to still unknown to me reasons when on graceful disconnect aka. .shutdown is called sometimes an error is thrown 
 	boost::system::error_code ec;
 	this->socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec); // https://stackoverflow.com/a/3068106/18301773
@@ -134,7 +135,7 @@ void Connection::handleError(const boost::system::error_code &error)
 	}
 }
 
-uint32_t Connection::getIP() const
+uint32_t Connection::getIP()
 {
 	if (!isConnected())
 	{

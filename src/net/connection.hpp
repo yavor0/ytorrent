@@ -5,7 +5,7 @@
 #include <boost/system/error_code.hpp>
 
 #include <utils/utils.hpp>
-
+#include <mutex>
 #include <list>
 #include "outgoingmessage.hpp"
 
@@ -19,7 +19,7 @@ typedef std::function<void(const std::string &errorCB)> ErrorCallback;
 private:
 	asio::ip::tcp::resolver resolver;
 	asio::ip::tcp::socket socket;
-
+	std::mutex connectedMutex;
 	ReadCallback readCB;
 	ConnectCallback connCB;
 	ErrorCallback errorCB;
@@ -37,14 +37,18 @@ public:
 
 	void connect(const std::string &host, const std::string &port, const ConnectCallback &connCB);
 	void close();
-	bool isConnected() const { return this->socket.is_open(); }
+	bool isConnected() // ts
+	{ 
+		std::lock_guard<std::mutex> guard(this->connectedMutex);
+		return this->socket.is_open();
+	}
 
 	inline void write(const OutgoingMessage &om) { write(om.data(), om.size()); }
 	void write(const uint8_t *data, size_t bytes);
 	void read(size_t bytes, const ReadCallback &readCB);
 
-	std::string getIPString() const { return parseIp(getIP()); }
-	uint32_t getIP() const;
+	std::string getIPString() { return parseIp(getIP()); }
+	uint32_t getIP();
 	uint8_t getPort() const { return socket.remote_endpoint().port();}
 
 	void setErrorCallback(const ErrorCallback &errorCB) { this->errorCB = errorCB; }

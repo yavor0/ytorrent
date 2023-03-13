@@ -22,8 +22,8 @@ Torrent::Torrent() : acceptor(nullptr),
 {
 	memset(handshake, 0, 68);
 	memset(peerId, 0, 20);
-	activePeers.reserve(100); // use constant
-	handshakingPeers.reserve(100); // use constant
+	activePeers.reserve(100);
+	blackListed.reserve(100);
 }
 
 Torrent::~Torrent()
@@ -128,7 +128,6 @@ ParseResult Torrent::parseFile(const std::string &fileName, const std::string &d
 				return ParseResult::FAILED_TO_OPEN;
 			}
 
-			std::clog << name << ": Completed pieces: " << completedPieces << "/" << pieces.size() << std::endl;
 		}
 		totalSize = length;
 		this->file = file;
@@ -194,7 +193,7 @@ Torrent::DownloadError Torrent::download(uint16_t port, bool seedAfter /*false*/
 		[this](const std::shared_ptr<Connection> &conn)
 		{
 			auto peer = std::make_shared<Peer>(this, conn);
-			this->handshakingPeers.push_back(peer);
+			this->blackListed.insert(peer->getRawIp());
 			peer->authenticate();
 		});
 
@@ -232,7 +231,7 @@ void Torrent::seed(uint16_t port)
 			[this](const std::shared_ptr<Connection> &conn)
 			{
 				auto peer = std::make_shared<Peer>(this, conn);
-				this->handshakingPeers.push_back(peer);
+				this->blackListed.insert(peer->getRawIp());
 				peer->authenticate();
 			});
 	}
@@ -257,7 +256,7 @@ void Torrent::customDownload(std::string peerIp, std::string peerPort)
 	startDownloadTime = std::chrono::high_resolution_clock::now();
 	size_t piecesNeeded = pieces.size();
 	auto peer = std::make_shared<Peer>(this);
-	handshakingPeers.push_back(peer);
+	blackListed.insert(peer->getRawIp());
 	peer->connect(peerIp, peerPort);
 	while (completedPieces != piecesNeeded)
 	{
@@ -303,6 +302,10 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 		if (true)
 		{
 			std::lock_guard<std::mutex> guard(this->peerContainersMutex);
+			if(ip==0 || blackListed.find(ip)!=blackListed.end())
+			{
+				continue;
+			}
 			for (size_t i = 0; i < activePeers.size(); i++)
 			{
 				if (activePeers[i]->getRawIp() == ip)
@@ -318,7 +321,7 @@ void Torrent::connectToPeers(const uint8_t *peers, size_t size)
 		// Asynchronously connect to that peer, and do not add it to our
 		// active peers list unless a connection was established successfully.
 		std::shared_ptr<Peer> peer = std::make_shared<Peer>(this);
-		handshakingPeers.push_back(peer); // to keep it alive, will delete upon successful connection
+		blackListed.insert(ip);
 		peer->connect(parseIp(ip), std::to_string(readAsBE16(ipAndPort + 4)));
 		}
 	}
@@ -328,13 +331,11 @@ void Torrent::handshaked(const std::shared_ptr<Peer> peer)
 {
 	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
 	addPeer(peer);
-   auto equalityCriteria = [&peer](const std::shared_ptr<Peer>& current)
-   {
-      return peer->getRawIp() == current->getRawIp();
-   };
-
-	auto it = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
-	handshakingPeers.erase(it);
+	auto it = blackListed.find(peer->getRawIp());
+	if(it!=blackListed.end()) // should only fail after incoming connection
+	{
+		blackListed.erase(it);
+	}
 }
 
 void Torrent::addPeer(const std::shared_ptr<Peer> &peer)
@@ -351,13 +352,6 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 		return peer->getRawIp() == current->getRawIp();
 	};
 
-	// doesn't belong here
-	auto it1 = std::find_if(handshakingPeers.begin(), handshakingPeers.end(), equalityCriteria);
-	if(it1 != handshakingPeers.end())
-	{
-		handshakingPeers.erase(it1);
-	}
-
 	auto it = std::find_if(activePeers.begin(), activePeers.end(), equalityCriteria);
 	if (it != activePeers.end())
 	{
@@ -370,27 +364,11 @@ void Torrent::removePeer(const std::shared_ptr<Peer> &peer, const std::string &e
 
 void Torrent::disconnectPeers()
 {
-	std::lock_guard<std::mutex> guard(this->peerContainersMutex);
 	if(acceptor)
 	{
 		acceptor->stop();
 	}
-
-   size_t peerCount = 0;
-
-	for (size_t i = 0; i < peerCount; i++)
-	{
-      /*
-      std::cout<<"i = "<<i<<"\n";
-      std::cout<<"use count = "<<handshakingPeers[i].use_count()<<"\n";
-      std::cout<<"get() = "<<handshakingPeers[i].get()<<"\n";
-      */
-	 
-		handshakingPeers[i]->disconnect();
-	}
-
-	// handshakingPeers.clear();
-
+	// std::clog << "BLACKLITED SIZE: "<< blackListed.size() << std::endl;
 	for (size_t i = 0; i < this->activePeers.size(); i++)
 	{
 		activePeers[i]->disconnect();

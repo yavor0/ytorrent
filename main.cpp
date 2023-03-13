@@ -91,7 +91,8 @@ int main(int argc, char **argv)
 	}
 	std::thread runnerThread = std::thread([]()
 										   { Connection::start(); });
-
+	system("clear");
+	std::clog << t->getName() << ": ---DOWNLOAD STARTING---" << std::endl;
 	std::clog << t->getName() << ": Total size: " << bytesToHumanReadable(t->getTotalSize(), true) << std::endl;
 	Torrent::DownloadError error = t->download(startport++, seed);
 	switch (error)
@@ -122,6 +123,7 @@ int main(int argc, char **argv)
 
 	if (seed)
 	{
+		std::clog << std::endl;
 		std::clog << t->getName() << "---INITIATING SEEDING---" << std::endl;
 		t->seed(startport);
 	}
