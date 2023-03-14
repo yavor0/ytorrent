@@ -80,8 +80,6 @@ private:
 	size_t calculateETA() const;
 	double getDownloadSpeed() const;
 
-	// eventually do this
-	// void handleIncomingPeerConnection(const std::shared_ptr<Connection>& conn);
 
 	TrackerQuery buildTrackerQuery(TrackerEvent event) const;
 	void handleTrackerError(const std::shared_ptr<Tracker> &tracker, const std::string &error);

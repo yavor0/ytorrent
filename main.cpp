@@ -13,7 +13,7 @@ std::ofstream logFile; // extern
 
 static void print_help(const char *p)
 {
-	std::clog << "Usage: " << p << " <torrent> {options}" << std::endl;
+	std::clog << "Usage: " << p << "-t <torrent> {options}" << std::endl;
 	std::clog << "\t\t--help (-h)          Print this help message." << std::endl;
 	std::clog << "\t\t--version (-v)       Print version." << std::endl;
 	std::clog << "\t\t--log (-l)           Specify log filename (defaults to log.txt)." << std::endl;

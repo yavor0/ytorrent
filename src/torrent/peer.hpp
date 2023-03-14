@@ -85,7 +85,6 @@ private:
 
 	inline bool hasPiece(size_t index) { return std::find(hasPieceIndexes.begin(), hasPieceIndexes.end(), index) != hasPieceIndexes.end(); }
 
-	void authenticate();
 public:
 	Peer(Torrent* t);
 	Peer(Torrent* t, const std::shared_ptr<Connection>& conn);
@@ -96,6 +95,7 @@ public:
 	inline uint32_t getRawIp() const { return conn->getIP(); }
 	void disconnect();
 	void connect(const std::string &ip, const std::string &port);
+	void authenticate();
 };
 
 #endif

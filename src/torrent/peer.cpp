@@ -143,12 +143,12 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 		if (msgSize != 0)
 			return handleError("invalid interested-message size");
 
-		// torrent->handlePeerDebug(this, "interested");
+		torrent->handlePeerDebug(shared_from_this(), "interested");
 		state.set(PEER_INTERESTED);
 
 		if (state.test(AM_CHOKING)) // literally just ask bro
 		{
-			// 4-byte length, 1-byte packet type
+			// 4-byte length, 1-byte message type
 			static const uint8_t unchoke[5] = {0, 0, 0, 1, UNCHOKE}; // just make it big-endian here, dont bother creating OutgoingMessage
 			conn->write(unchoke, sizeof(unchoke));
 			state.reset(AM_CHOKING);
@@ -230,7 +230,7 @@ void Peer::handleMessage(MessageID messageID, IncomingMessage inMsg)
 			break;
 		}
 
-		// torrent->handlePeerDebug(this, "requested piece block of length " + bytesToHumanReadable(length, true));
+		torrent->handlePeerDebug(shared_from_this(), "requested piece block of length " + bytesToHumanReadable(length, true));
 		torrent->handleBlockRequest(shared_from_this(), index, begin, length);
 		break;
 	}
