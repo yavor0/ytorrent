@@ -20,6 +20,7 @@ static void print_help(const char *p)
 	std::clog << "\t\t--torrent (-t)       Specify torrent file." << std::endl;
 	std::clog << "\t\t--dir (-d)           Specify downloads directory." << std::endl;
 	std::clog << "\t\t--seed (-s)          Seed after download has finished." << std::endl;
+	std::clog << "\t\t--port (-p)          Specify port for seeding." << std::endl;
 	std::clog << "Example: " << p << " -t a.torrent -d Torrents -s" << std::endl;
 	// std::clog << "\t\t--piecesize (-s)		Specify piece size in KB, this will be rounded to the nearest power of two. Default is 16 KB." << std::endl;
 }
@@ -34,7 +35,7 @@ int main(int argc, char **argv)
 	std::string logFname = "out.txt";
 	// https://www.boost.org/doc/libs/1_71_0/doc/html/program_options/tutorial.html
 	po::options_description opts;
-	opts.add_options()("help,h", "print this help message")("version,v", "print version")("log,l", po::value(&logFname), "specify log filename (defaults to log.txt)")("torrent,t", po::value(&filePath), "specify torrent file")("dir,d", po::value(&dir), "specify downloads directory")("seed,s", po::bool_switch(&seed), "seed after download has finished");
+	opts.add_options()("help,h", "print this help message")("version,v", "print version")("log,l", po::value(&logFname), "specify log filename (defaults to log.txt)")("torrent,t", po::value(&filePath), "specify torrent file")("dir,d", po::value(&dir), "specify downloads directory")("seed,s", po::bool_switch(&seed), "seed after download has finished")("port,p", po::value(&startport), "specify port for seeding");
 
 	if (argc == 1)
 	{
