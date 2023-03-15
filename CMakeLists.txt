@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ytorrent)
+project(yTorrent)
 add_compile_options(
     # -Wall -Wextra -Wpedantic -Wunused-result -march=native -ftrapv
     # -fsanitize=thread
